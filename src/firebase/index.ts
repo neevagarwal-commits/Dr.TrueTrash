@@ -10,9 +10,14 @@ function initializeFirebase(): {
   auth: Auth;
   firestore: Firestore;
 } | null {
-  // Check if we are in a browser environment and if the config is valid
-  if (typeof window === 'undefined' || !firebaseConfig.apiKey || firebaseConfig.apiKey === 'your-api-key') {
-    // Return null if not in browser or if config is placeholder
+  // Check if we are in a browser environment
+  if (typeof window === 'undefined') {
+    return null;
+  }
+
+  // Check if the config is valid (not placeholder)
+  if (!firebaseConfig.apiKey || firebaseConfig.apiKey.startsWith('your-')) {
+    console.warn("Firebase config is not set. Features requiring Firebase will be disabled.");
     return null;
   }
 
