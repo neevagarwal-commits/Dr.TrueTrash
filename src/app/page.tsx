@@ -3,9 +3,16 @@
 import { useState, useEffect, useCallback } from 'react';
 import ChatWrapper from '@/components/chat/chat-wrapper';
 import Header from '@/components/layout/header';
-import { nanoid } from 'nanoid';
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import { FirebaseClientProvider } from '@/firebase';
+import { adjectives, nouns } from '@/lib/words';
+
+function generateMemorableId() {
+  const adj = adjectives[Math.floor(Math.random() * adjectives.length)];
+  const noun = nouns[Math.floor(Math.random() * nouns.length)];
+  const num = Math.floor(Math.random() * 100);
+  return `${adj}-${noun}-${num}`;
+}
 
 export default function Home() {
   const [userId, setUserId] = useState<string | null>(null);
@@ -29,7 +36,7 @@ export default function Home() {
       setUserId(idFromStorage);
     } else {
       // If no ID anywhere, create a new one
-      const newId = nanoid();
+      const newId = generateMemorableId();
       localStorage.setItem('userId', newId);
       router.replace(`${pathname}?userId=${newId}`, { scroll: false });
       setUserId(newId);
@@ -38,6 +45,10 @@ export default function Home() {
 
   const handleChatIdChange = useCallback((id: string | null) => {
     setChatId(id);
+  }, []);
+  
+  const handleNewChat = useCallback(() => {
+    setChatId(null);
   }, []);
 
   if (!userId) {
@@ -54,10 +65,11 @@ export default function Home() {
         <Header userId={userId} />
         <main className="flex-1 flex flex-col items-center py-8 px-4">
           <ChatWrapper
-            key={userId}
+            key={chatId || 'new'}
             userId={userId}
             chatId={chatId}
             onChatIdChange={handleChatIdChange}
+            onNewChat={handleNewChat}
           />
         </main>
         <footer className="py-4 text-center text-sm text-muted-foreground">

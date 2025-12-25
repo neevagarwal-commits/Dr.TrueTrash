@@ -9,7 +9,7 @@ import PredictionsDisplay from './predictions-display';
 import { nanoid } from 'nanoid';
 import { LoaderCircle } from 'lucide-react';
 import ChatHistory from './chat-history';
-import { useFirestore, useAuth } from '@/firebase';
+import { useFirestore } from '@/firebase';
 import { useCollection } from '@/firebase/firestore/use-collection';
 import { addMessage, createChatSession } from '@/firebase/firestore/chat';
 import { collection, query, orderBy } from 'firebase/firestore';
@@ -29,16 +29,17 @@ interface ChatWrapperProps {
   userId: string;
   chatId: string | null;
   onChatIdChange: (id: string | null) => void;
+  onNewChat: () => void;
 }
 
-export default function ChatWrapper({ userId, chatId, onChatIdChange }: ChatWrapperProps) {
+export default function ChatWrapper({ userId, chatId, onChatIdChange, onNewChat }: ChatWrapperProps) {
   const [messages, setMessages] = useState<Message[]>([initialMessage]);
   const [isLoading, setIsLoading] = useState(false);
   const chatContainerRef = useRef<HTMLDivElement>(null);
   const firestore = useFirestore();
 
   const messagesQuery =
-    firestore && chatId
+    firestore && chatId && userId
       ? query(collection(firestore, 'users', userId, 'chats', chatId, 'messages'), orderBy('createdAt', 'asc'))
       : null;
 
@@ -68,8 +69,8 @@ export default function ChatWrapper({ userId, chatId, onChatIdChange }: ChatWrap
     let currentChatId = chatId;
     
     // Create a new chat session if it's the first message
-    if (!currentChatId) {
-      const newChatId = await createChatSession(firestore!, userId, input);
+    if (!currentChatId && firestore && userId) {
+      const newChatId = await createChatSession(firestore, userId, input);
       if (newChatId) {
         onChatIdChange(newChatId);
         currentChatId = newChatId;
@@ -84,7 +85,7 @@ export default function ChatWrapper({ userId, chatId, onChatIdChange }: ChatWrap
     const userMessage: Message = { id: nanoid(), role: 'user', content: userMessageContent };
     
     setMessages(prev => [...prev, userMessage]);
-    if(firestore && currentChatId){
+    if(firestore && currentChatId && userId){
       addMessage(firestore, userId, currentChatId, { role: 'user', content: input });
     }
     
@@ -118,25 +119,26 @@ export default function ChatWrapper({ userId, chatId, onChatIdChange }: ChatWrap
         assistantMessageForDb = { role: 'assistant', content: 'An unknown error occurred.' };
     }
 
-    if(firestore && currentChatId) {
+    if(firestore && currentChatId && userId) {
       addMessage(firestore, userId, currentChatId, assistantMessageForDb);
     }
 
     setMessages(prev => [...prev, assistantMessage]);
     setIsLoading(false);
   };
-  
-  const handleNewChat = () => {
-    onChatIdChange(null);
-    setMessages([initialMessage]);
-  };
 
   return (
     <div className="w-full max-w-4xl flex-1 flex h-[calc(100vh-180px)]">
-      <ChatHistory userId={userId} onSelectChat={onChatIdChange} onNewChat={handleNewChat} selectedChatId={chatId} />
+      <ChatHistory userId={userId} onSelectChat={onChatIdChange} onNewChat={onNewChat} selectedChatId={chatId} />
       <div className="flex-1 flex flex-col bg-card rounded-r-xl shadow-lg border">
         <div ref={chatContainerRef} className="flex-1 p-6 overflow-y-auto">
-          <ChatMessages messages={messages} />
+          {messagesLoading && !chatId ? (
+            <div className="flex items-center justify-center h-full">
+              <LoaderCircle className="h-8 w-8 animate-spin text-primary" />
+            </div>
+          ) : (
+            <ChatMessages messages={messages} />
+          )}
 
           {isLoading && (
               <div className="flex items-start gap-4 mt-4">
