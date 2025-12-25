@@ -25,9 +25,13 @@ export default function ChatHistory({ userId, onSelectChat, onNewChat, selectedC
     
   const { data: chats, loading } = useCollection<ChatSession>(chatsQuery);
 
+  const handleNewChatClick = () => {
+    onNewChat();
+  }
+
   return (
     <div className="w-64 flex flex-col bg-card rounded-l-xl shadow-lg border p-4">
-      <Button onClick={onNewChat} className="w-full mb-4">
+      <Button onClick={handleNewChatClick} className="w-full mb-4">
         <PlusCircle className="mr-2 h-4 w-4" />
         New Chat
       </Button>

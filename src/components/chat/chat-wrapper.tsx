@@ -66,31 +66,37 @@ export default function ChatWrapper({ userId, chatId, onChatIdChange, onNewChat 
   }, [messages]);
 
   const handleSubmit = async (input: string) => {
+    setIsLoading(true);
     let currentChatId = chatId;
     
-    // Create a new chat session if it's the first message
+    // Create a new chat session if it's the first message of a new chat
     if (!currentChatId && firestore && userId) {
-      const newChatId = await createChatSession(firestore, userId, input);
+      const newChatId = await createChatSession(firestore, userId);
       if (newChatId) {
         onChatIdChange(newChatId);
         currentChatId = newChatId;
-        setMessages([]); // Clear initial message
+        setMessages([]); // Clear initial message to start fresh
       } else {
         console.error("Failed to create chat session");
+        setIsLoading(false);
         return;
       }
+    }
+
+    if (!currentChatId) {
+        console.error("No chat ID available to send message");
+        setIsLoading(false);
+        return;
     }
 
     const userMessageContent = input;
     const userMessage: Message = { id: nanoid(), role: 'user', content: userMessageContent };
     
     setMessages(prev => [...prev, userMessage]);
-    if(firestore && currentChatId && userId){
+    if(firestore && userId){
       addMessage(firestore, userId, currentChatId, { role: 'user', content: input });
     }
     
-    setIsLoading(true);
-
     const result = await getAiResponse(input);
 
     let assistantMessage: Message;
@@ -119,7 +125,7 @@ export default function ChatWrapper({ userId, chatId, onChatIdChange, onNewChat 
         assistantMessageForDb = { role: 'assistant', content: 'An unknown error occurred.' };
     }
 
-    if(firestore && currentChatId && userId) {
+    if(firestore && userId) {
       addMessage(firestore, userId, currentChatId, assistantMessageForDb);
     }
 

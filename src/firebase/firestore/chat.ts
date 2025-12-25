@@ -9,22 +9,23 @@ import { errorEmitter } from '../error-emitter';
 import { FirestorePermissionError, type SecurityRuleContext } from '../errors';
 
 /**
- * Creates a new chat session in Firestore.
+ * Creates a new chat session in Firestore with a timestamp-based title.
  * @param firestore - The Firestore instance.
  * @param userId - The ID of the user.
- * @param title - The initial title for the chat session.
  * @returns The ID of the newly created chat session, or null on failure.
  */
 export async function createChatSession(
   firestore: Firestore,
-  userId: string,
-  title: string
+  userId: string
 ): Promise<string | null> {
   if (!firestore) return null;
+  
+  const title = new Date().toLocaleString();
+
   try {
     const docRef = await addDoc(collection(firestore, 'users', userId, 'chats'), {
       userId,
-      title: title.substring(0, 30), // Truncate title
+      title: title,
       createdAt: serverTimestamp(),
     });
     return docRef.id;
