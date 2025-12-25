@@ -27,12 +27,12 @@ type NewMessagePayload = {
   predictions?: Prediction[];
 };
 
-export async function addMessage(
+export function addMessage(
   firestore: Firestore,
   userId: string,
   chatSessionId: string,
   payload: NewMessagePayload
-): Promise<void> {
+) {
   const messagesColRef = collection(firestore, `users/${userId}/chatSessions/${chatSessionId}/messages`);
   addDoc(messagesColRef, {
     ...payload,
@@ -47,7 +47,7 @@ export async function addMessage(
   });
 }
 
-export async function createChatSession(firestore: Firestore, userId: string) {
+export async function createChatSession(firestore: Firestore, userId: string): Promise<string | null> {
   try {
     const chatSessionsCol = collection(firestore, `users/${userId}/chatSessions`);
     const newSessionRef = await addDoc(chatSessionsCol, {
@@ -55,7 +55,7 @@ export async function createChatSession(firestore: Firestore, userId: string) {
       createdAt: serverTimestamp(),
       title: "New Chat"
     });
-    return { id: newSessionRef.id };
+    return newSessionRef.id;
   } catch (serverError) {
       const permissionError = new FirestorePermissionError({
           path: `users/${userId}/chatSessions`,
@@ -67,7 +67,7 @@ export async function createChatSession(firestore: Firestore, userId: string) {
   }
 }
 
-export async function updateChatSessionTitle(firestore: Firestore, userId: string, chatSessionId: string, title: string) {
+export function updateChatSessionTitle(firestore: Firestore, userId: string, chatSessionId: string, title: string) {
   const sessionDocRef = doc(firestore, `users/${userId}/chatSessions`, chatSessionId);
   updateDoc(sessionDocRef, { title }).catch((serverError) => {
     const permissionError = new FirestorePermissionError({

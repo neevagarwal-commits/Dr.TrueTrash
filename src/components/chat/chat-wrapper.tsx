@@ -26,7 +26,7 @@ const initialMessage: Message = {
 
 interface ChatWrapperProps {
   chatId: string | null;
-  onChatIdChange: (id: string) => void;
+  onChatIdChange: (id: string | null) => void;
 }
 
 export default function ChatWrapper({ chatId, onChatIdChange }: ChatWrapperProps) {
@@ -73,12 +73,14 @@ export default function ChatWrapper({ chatId, onChatIdChange }: ChatWrapperProps
   }, [messages]);
 
   const handleSubmit = async (input: string) => {
-    const isFirstMessageForThisSession = messages.length === 1 && messages[0].id === 'initial';
-    
+    // Determine if this is the very first message a user sends in a new/guest chat.
+    const isFirstUserMessage = (chatId === null && messages.length <= 1) || (!!chatId && firestoreMessages?.length === 0);
+
     const userMessageContent = input;
     const userMessage: Message = { id: nanoid(), role: 'user', content: userMessageContent };
     
-    setMessages(isFirstMessageForThisSession ? [userMessage] : (prev) => [...prev, userMessage]);
+    // If it's the initial message, replace the welcome message. Otherwise, append.
+    setMessages(isFirstUserMessage ? [userMessage] : (prev) => [...prev, userMessage]);
     
     setIsLoading(true);
 
@@ -86,11 +88,12 @@ export default function ChatWrapper({ chatId, onChatIdChange }: ChatWrapperProps
     
     // For registered users, handle Firestore logic
     if (userId && firestore) {
+      // If there's no chatId, it's a new chat for a registered user.
       if (!currentChatId) {
-          const newSession = await createChatSession(firestore, userId);
-          if (newSession) {
-              currentChatId = newSession.id;
-              onChatIdChange(newSession.id);
+          const newSessionId = await createChatSession(firestore, userId);
+          if (newSessionId) {
+              currentChatId = newSessionId;
+              onChatIdChange(newSessionId);
           } else {
               setIsLoading(false);
               const errorMessage: Message = {
@@ -102,7 +105,7 @@ export default function ChatWrapper({ chatId, onChatIdChange }: ChatWrapperProps
               return;
           }
       }
-
+      // Add the user message to Firestore
       await addMessage(firestore, userId, currentChatId, {
         role: 'user',
         content: userMessageContent,
@@ -120,6 +123,7 @@ export default function ChatWrapper({ chatId, onChatIdChange }: ChatWrapperProps
         content: <p className="text-destructive">{result.error}</p>,
       };
       if (userId && firestore && currentChatId) {
+        // Log the error response to Firestore as well
         await addMessage(firestore, userId, currentChatId, {
           role: 'assistant',
           content: result.error,
@@ -132,15 +136,16 @@ export default function ChatWrapper({ chatId, onChatIdChange }: ChatWrapperProps
         content: <PredictionsDisplay predictions={result.predictions} />,
       };
        if (userId && firestore && currentChatId) {
+        // Save the successful prediction to Firestore
         await addMessage(firestore, userId, currentChatId, {
           role: 'assistant',
           content: 'Based on your symptoms, here are some potential health issues.',
           predictions: result.predictions,
         });
         
-        // Update title only for new chats for registered users
-        if (isFirstMessageForThisSession) {
-            const title = `Analysis of: ${input.substring(0,30)}...`;
+        // Update the chat title if it's the first message of the session
+        if (isFirstUserMessage) {
+            const title = `Analysis: ${input.substring(0,30)}${input.length > 30 ? '...' : ''}`;
             await updateChatSessionTitle(firestore, userId, currentChatId, title);
         }
       }

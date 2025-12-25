@@ -20,7 +20,7 @@ import { createChatSession } from '@/firebase/firestore/chat';
 
 interface ChatHistoryProps {
   currentChatId: string | null;
-  onSelectChat: (id: string) => void;
+  onSelectChat: (id: string | null) => void;
   onNewChat: () => void;
 }
 
@@ -45,12 +45,13 @@ export default function ChatHistory({
 
   const handleNewChat = async () => {
     if (userId && firestore) {
-      const newSession = await createChatSession(firestore, userId);
-      if (newSession) {
-        onSelectChat(newSession.id);
+      // For registered users, create a session in Firestore
+      const newSessionId = await createChatSession(firestore, userId);
+      if (newSessionId) {
+        onSelectChat(newSessionId);
       }
     } else {
-      // For guest users or when offline
+      // For guest users, just reset the chat interface locally
       onNewChat();
     }
   };

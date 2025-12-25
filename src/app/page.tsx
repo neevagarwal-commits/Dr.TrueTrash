@@ -42,6 +42,10 @@ export default function Home() {
     setCurrentChatId(null);
   };
 
+  const handleSelectChat = (chatId: string | null) => {
+    setCurrentChatId(chatId);
+  }
+
   const handleGuestSignIn = async () => {
     if (!auth) return;
     setIsProcessing(true);
@@ -125,7 +129,7 @@ export default function Home() {
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <Button onClick={handleGuestSignIn} variant="outline" className="w-full" disabled={isProcessing}>
-                    <User className="mr-2 h-4 w-4" />
+                    {isProcessing ? <LoaderCircle className="mr-2 h-4 w-4 animate-spin" /> : <User className="mr-2 h-4 w-4" />}
                     Continue as Guest
                   </Button>
                   <div className="relative">
@@ -208,7 +212,7 @@ export default function Home() {
       <Sidebar side="left" collapsible="offcanvas">
         <ChatHistory
           currentChatId={currentChatId}
-          onSelectChat={setCurrentChatId}
+          onSelectChat={handleSelectChat}
           onNewChat={handleNewChat}
         />
       </Sidebar>
