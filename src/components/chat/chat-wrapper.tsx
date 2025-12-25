@@ -73,13 +73,12 @@ export default function ChatWrapper({ chatId, onChatIdChange }: ChatWrapperProps
   }, [messages]);
 
   const handleSubmit = async (input: string) => {
+    const isFirstMessageForThisSession = messages.length === 1 && messages[0].id === 'initial';
     
     const userMessageContent = input;
     const userMessage: Message = { id: nanoid(), role: 'user', content: userMessageContent };
     
-    // Clear initial message on first user input, or if it's the only message.
-    const isFirstMessage = messages.length === 1 && messages[0].id === 'initial';
-    setMessages(isFirstMessage ? [userMessage] : [...prev, userMessage]);
+    setMessages(isFirstMessageForThisSession ? [userMessage] : (prev) => [...prev, userMessage]);
     
     setIsLoading(true);
 
@@ -140,7 +139,7 @@ export default function ChatWrapper({ chatId, onChatIdChange }: ChatWrapperProps
         });
         
         // Update title only for new chats for registered users
-        if (isFirstMessage) {
+        if (isFirstMessageForThisSession) {
             const title = `Analysis of: ${input.substring(0,30)}...`;
             await updateChatSessionTitle(firestore, userId, currentChatId, title);
         }
