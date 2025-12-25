@@ -1,14 +1,18 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
-import type { Message } from '@/lib/types';
+import { useState, useRef, useEffect, useCallback } from 'react';
+import type { Message, Prediction, ChatMessage } from '@/lib/types';
 import ChatMessages from './chat-messages';
 import ChatInput from './chat-input';
 import { getAiResponse } from '@/app/actions';
-import { useToast } from '@/hooks/use-toast';
 import PredictionsDisplay from './predictions-display';
 import { nanoid } from 'nanoid';
 import { LoaderCircle } from 'lucide-react';
+import { useUser } from '@/firebase/auth/use-user';
+import { useFirestore } from '@/firebase';
+import { useCollection } from '@/firebase/firestore/use-collection';
+import { addMessage, getChatMessagesQuery, updateChatSessionTitle } from '@/firebase/firestore/chat';
+import { collection, query, orderBy } from 'firebase/firestore';
 
 const initialMessage: Message = {
   id: 'initial',
@@ -21,11 +25,43 @@ const initialMessage: Message = {
   ),
 };
 
-export default function ChatWrapper() {
+interface ChatWrapperProps {
+  chatId: string | null;
+}
+
+export default function ChatWrapper({ chatId }: ChatWrapperProps) {
   const [messages, setMessages] = useState<Message[]>([initialMessage]);
   const [isLoading, setIsLoading] = useState(false);
-  const { toast } = useToast();
   const chatContainerRef = useRef<HTMLDivElement>(null);
+  const { user } = useUser();
+  const firestore = useFirestore();
+
+  const messagesQuery = chatId ? getChatMessagesQuery(firestore, chatId) : null;
+  const { data: firestoreMessages, loading: messagesLoading } = useCollection<ChatMessage>(messagesQuery);
+
+  const mapFirestoreMessageToComponent = useCallback((msg: ChatMessage): Message => {
+    let content: React.ReactNode;
+    if (msg.role === 'assistant' && msg.predictions) {
+      content = <PredictionsDisplay predictions={msg.predictions} />;
+    } else {
+      content = msg.content;
+    }
+    return {
+      id: msg.id,
+      role: msg.role,
+      content: content,
+    };
+  }, []);
+
+  useEffect(() => {
+    if (firestoreMessages) {
+      const mappedMessages = firestoreMessages.map(mapFirestoreMessageToComponent);
+      setMessages(mappedMessages.length > 0 ? mappedMessages : [initialMessage]);
+    } else {
+      setMessages([initialMessage]);
+    }
+  }, [firestoreMessages, mapFirestoreMessageToComponent]);
+
 
   useEffect(() => {
     if (chatContainerRef.current) {
@@ -34,9 +70,18 @@ export default function ChatWrapper() {
   }, [messages]);
 
   const handleSubmit = async (input: string) => {
+    if (!chatId || !user) return;
+
     setIsLoading(true);
-    const userMessage: Message = { id: nanoid(), role: 'user', content: input };
+    const userMessageContent = input;
+    const userMessage: Message = { id: nanoid(), role: 'user', content: userMessageContent };
     setMessages(prev => [...prev, userMessage]);
+
+    // Save user message to Firestore
+    await addMessage(firestore, chatId, {
+      role: 'user',
+      content: userMessageContent,
+    });
 
     const result = await getAiResponse(input);
 
@@ -47,10 +92,10 @@ export default function ChatWrapper() {
         content: <p className="text-destructive">{result.error}</p>,
       };
       setMessages(prev => [...prev, errorMessage]);
-      toast({
-        title: 'An error occurred',
-        description: result.error,
-        variant: 'destructive',
+      // Save error message to Firestore
+      await addMessage(firestore, chatId, {
+        role: 'assistant',
+        content: result.error,
       });
     } else if (result.predictions) {
       const assistantMessage: Message = {
@@ -59,6 +104,17 @@ export default function ChatWrapper() {
         content: <PredictionsDisplay predictions={result.predictions} />,
       };
       setMessages(prev => [...prev, assistantMessage]);
+      // Save assistant message with predictions to Firestore
+      await addMessage(firestore, chatId, {
+        role: 'assistant',
+        content: 'Based on your symptoms, here are some potential health issues.',
+        predictions: result.predictions,
+      });
+
+      if (messages.length <= 2) {
+        const title = `Analysis of: ${input.substring(0,30)}...`;
+        await updateChatSessionTitle(firestore, user.uid, chatId, title);
+      }
     }
     setIsLoading(false);
   };
@@ -66,7 +122,14 @@ export default function ChatWrapper() {
   return (
     <div className="w-full max-w-3xl flex-1 flex flex-col bg-card rounded-xl shadow-lg border">
       <div ref={chatContainerRef} className="flex-1 p-6 overflow-y-auto">
-        <ChatMessages messages={messages} />
+        {messagesLoading && messages.length <= 1 ? (
+          <div className="flex justify-center items-center h-full">
+            <LoaderCircle className="h-8 w-8 animate-spin text-primary" />
+          </div>
+        ) : (
+          <ChatMessages messages={messages} />
+        )}
+
         {isLoading && (
             <div className="flex items-start gap-4 mt-4">
                 <div className="flex-shrink-0 size-8 bg-primary text-primary-foreground rounded-full flex items-center justify-center">
@@ -79,7 +142,7 @@ export default function ChatWrapper() {
         )}
       </div>
       <div className="p-4 border-t">
-        <ChatInput onSubmit={handleSubmit} isLoading={isLoading} />
+        <ChatInput onSubmit={handleSubmit} isLoading={isLoading || messagesLoading} />
       </div>
     </div>
   );

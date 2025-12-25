@@ -1,72 +1,84 @@
-
 'use client';
 
+import { useCollection } from '@/firebase/firestore/use-collection';
+import { useUser } from '@/firebase/auth/use-user';
+import { collection, query, orderBy } from 'firebase/firestore';
+import { useFirestore } from '@/firebase';
+import type { ChatSession } from '@/lib/types';
 import {
   SidebarContent,
-  SidebarGroup,
   SidebarHeader,
   SidebarMenu,
   SidebarMenuItem,
   SidebarMenuButton,
-  SidebarMenuSub,
-  SidebarMenuSubItem,
-  SidebarMenuSubButton,
   SidebarTitle,
 } from '@/components/ui/sidebar-v2';
 import { Button } from '@/components/ui/button';
-import { Plus } from 'lucide-react';
+import { Plus, MessageSquare } from 'lucide-react';
+import { Skeleton } from '../ui/skeleton';
+import { createChatSession } from '@/firebase/firestore/chat';
 
-// Mock data for chat history
-const MOCK_HISTORY = [
-  {
-    id: '1',
-    title: 'Fever and Headache',
-    date: '2024-07-29',
-  },
-  {
-    id: '2',
-    title: 'Sore Throat Analysis',
-    date: '2024-07-28',
-  },
-  {
-    id: '3',
-    title: 'General Fatigue Check',
-    date: '2024-07-27',
-  },
-];
+interface ChatHistoryProps {
+  currentChatId: string | null;
+  onSelectChat: (id: string) => void;
+  onNewChat: () => void;
+}
 
-export default function ChatHistory() {
-  const handleNewChat = () => {
-    // In a real app, this would clear the current chat and start a new session.
-    console.log('Starting new chat...');
+export default function ChatHistory({
+  currentChatId,
+  onSelectChat,
+  onNewChat,
+}: ChatHistoryProps) {
+  const { user } = useUser();
+  const firestore = useFirestore();
+
+  const chatHistoryQuery = user
+    ? query(
+        collection(firestore, `users/${user.uid}/chatSessions`),
+        orderBy('createdAt', 'desc')
+      )
+    : null;
+
+  const { data: chatHistory, loading } = useCollection<ChatSession>(chatHistoryQuery);
+
+  const handleNewChat = async () => {
+    if (user) {
+      const newSession = await createChatSession(firestore, user.uid);
+      if (newSession) {
+        onSelectChat(newSession.id);
+      }
+    } else {
+      onNewChat();
+    }
   };
 
   return (
     <div className="flex flex-col h-full">
       <SidebarHeader>
         <SidebarTitle>Chat History</SidebarTitle>
-        <Button
-          variant="outline"
-          className="w-full"
-          onClick={handleNewChat}
-        >
+        <Button variant="outline" className="w-full" onClick={handleNewChat}>
           <Plus className="mr-2 h-4 w-4" />
           New Chat
         </Button>
       </SidebarHeader>
       <SidebarContent>
+        {loading && (
+          <div className="space-y-2 px-2">
+            {[...Array(3)].map((_, i) => (
+              <Skeleton key={i} className="h-10 w-full" />
+            ))}
+          </div>
+        )}
         <SidebarMenu>
-          {MOCK_HISTORY.map((chat) => (
+          {chatHistory?.map(chat => (
             <SidebarMenuItem key={chat.id}>
               <SidebarMenuButton
+                isActive={currentChatId === chat.id}
+                onClick={() => onSelectChat(chat.id)}
                 tooltip={{ children: chat.title, side: 'right' }}
               >
-                <div className="flex flex-col items-start text-left">
-                  <span className="truncate">{chat.title}</span>
-                  <span className="text-xs text-muted-foreground">
-                    {chat.date}
-                  </span>
-                </div>
+                <MessageSquare />
+                <span className="truncate">{chat.title}</span>
               </SidebarMenuButton>
             </SidebarMenuItem>
           ))}

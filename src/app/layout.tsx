@@ -1,6 +1,8 @@
 import type {Metadata} from 'next';
 import { Toaster } from "@/components/ui/toaster";
 import './globals.css';
+import { FirebaseClientProvider } from '@/firebase';
+import { FirebaseErrorListener } from '@/components/firebase-error-listener';
 
 export const metadata: Metadata = {
   title: 'DR.TRUETRASH',
@@ -20,7 +22,10 @@ export default function RootLayout({
         <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&family=Roboto:wght@400;500&display=swap" rel="stylesheet" />
       </head>
       <body className="font-body antialiased">
-        {children}
+        <FirebaseClientProvider>
+          {children}
+          <FirebaseErrorListener />
+        </FirebaseClientProvider>
         <Toaster />
       </body>
     </html>
