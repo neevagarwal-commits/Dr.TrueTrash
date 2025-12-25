@@ -21,8 +21,8 @@ export type ChatSession = {
 };
 
 export type ChatMessage = {
-  id: string;
-  chatSessionId: string;
+  id?: string;
+  chatSessionId?: string;
   role: 'user' | 'assistant';
   content: string;
   predictions?: Prediction[];
