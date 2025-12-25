@@ -17,6 +17,7 @@ import {
   signUpWithEmail,
   signInAsGuest,
   sendPasswordReset,
+  signInWithGoogle,
 } from '@/firebase/auth/client';
 import { useAuth } from '@/firebase';
 import { Input } from '@/components/ui/input';
@@ -42,9 +43,23 @@ export default function Home() {
     setCurrentChatId(null);
   };
 
-  const handleSelectChat = (chatId: string | null) => {
+  const handleSelectChat = (chatId: string) => {
     setCurrentChatId(chatId);
   }
+  
+  const handleGoogleSignIn = async () => {
+    if (!auth) return;
+    setIsProcessing(true);
+    setError(null);
+    setInfo(null);
+    try {
+      await signInWithGoogle(auth);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to sign in with Google.');
+    } finally {
+      setIsProcessing(false);
+    }
+  };
 
   const handleGuestSignIn = async () => {
     if (!auth) return;
@@ -128,7 +143,11 @@ export default function Home() {
                   <CardDescription>Sign in to save your chat history or continue as a guest.</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <Button onClick={handleGuestSignIn} variant="outline" className="w-full" disabled={isProcessing}>
+                   <Button onClick={handleGoogleSignIn} variant="outline" className="w-full" disabled={isProcessing}>
+                    {isProcessing ? <LoaderCircle className="mr-2 h-4 w-4 animate-spin" /> : <svg className="mr-2 h-4 w-4" role="img" viewBox="0 0 24 24"><path fill="currentColor" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" /></svg>}
+                    Sign in with Google
+                  </Button>
+                  <Button onClick={handleGuestSignIn} variant="secondary" className="w-full" disabled={isProcessing}>
                     {isProcessing ? <LoaderCircle className="mr-2 h-4 w-4 animate-spin" /> : <User className="mr-2 h-4 w-4" />}
                     Continue as Guest
                   </Button>

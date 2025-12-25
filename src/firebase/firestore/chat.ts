@@ -50,19 +50,20 @@ export async function addMessage(
 }
 
 export async function createChatSession(firestore: Firestore, userId: string): Promise<string | null> {
-  try {
-    const chatSessionsCol = collection(firestore, `users/${userId}/chatSessions`);
-    const newSessionRef = await addDoc(chatSessionsCol, {
+  const chatSessionsCol = collection(firestore, `users/${userId}/chatSessions`);
+  const payload = {
       userId: userId,
       createdAt: serverTimestamp(),
       title: "New Chat"
-    });
+  };
+  try {
+    const newSessionRef = await addDoc(chatSessionsCol, payload);
     return newSessionRef.id;
   } catch (serverError) {
       const permissionError = new FirestorePermissionError({
-          path: `users/${userId}/chatSessions`,
+          path: chatSessionsCol.path,
           operation: 'create',
-          requestResourceData: { userId, title: 'New Chat' },
+          requestResourceData: payload,
       });
       errorEmitter.emit('permission-error', permissionError);
       return null;

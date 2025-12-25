@@ -20,7 +20,7 @@ import { createChatSession } from '@/firebase/firestore/chat';
 
 interface ChatHistoryProps {
   currentChatId: string | null;
-  onSelectChat: (id: string | null) => void;
+  onSelectChat: (id: string) => void;
   onNewChat: () => void;
 }
 
@@ -43,7 +43,7 @@ export default function ChatHistory({
 
   const { data: chatHistory, loading } = useCollection<ChatSession>(chatHistoryQuery);
 
-  const handleNewChat = async () => {
+  const handleNewChatClick = async () => {
     if (userId && firestore) {
       // For registered users, create a session in Firestore
       const newSessionId = await createChatSession(firestore, userId);
@@ -60,7 +60,7 @@ export default function ChatHistory({
     <div className="flex flex-col h-full">
       <SidebarHeader>
         <SidebarTitle>Chat History</SidebarTitle>
-        <Button variant="outline" className="w-full" onClick={handleNewChat}>
+        <Button variant="outline" className="w-full" onClick={handleNewChatClick}>
           <Plus className="mr-2 h-4 w-4" />
           New Chat
         </Button>

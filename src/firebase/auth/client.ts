@@ -7,8 +7,20 @@ import {
   sendPasswordResetEmail,
   signInAnonymously,
   signOut as signOutFirebase,
+  GoogleAuthProvider,
+  signInWithPopup,
 } from 'firebase/auth';
 
+export const signInWithGoogle = async (auth: Auth) => {
+  const provider = new GoogleAuthProvider();
+  try {
+    const userCredential = await signInWithPopup(auth, provider);
+    return userCredential.user;
+  } catch (error) {
+    console.error('Error signing in with Google', error);
+    throw error;
+  }
+}
 
 export const signInWithEmail = async (auth: Auth, email: string, pass: string) => {
   try {
