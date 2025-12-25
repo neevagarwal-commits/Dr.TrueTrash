@@ -2,68 +2,58 @@
 
 import {
   Auth,
-  RecaptchaVerifier,
-  signInWithPhoneNumber as firebaseSignInWithPhoneNumber,
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
+  sendPasswordResetEmail,
+  signInAnonymously,
   signOut as signOutFirebase,
-  type ConfirmationResult,
 } from 'firebase/auth';
 
-let recaptchaVerifier: RecaptchaVerifier | null = null;
 
-const getRecaptchaVerifier = (auth: Auth) => {
-  if (recaptchaVerifier) {
-    recaptchaVerifier.clear();
-    recaptchaVerifier = null;
-  }
-  
-  recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
-    size: 'invisible',
-    callback: (response: any) => {
-      // reCAPTCHA solved, allow signInWithPhoneNumber.
-      // This callback is for invisible reCAPTCHA.
-    },
-    'expired-callback': () => {
-      // Response expired. Ask user to solve reCAPTCHA again.
-      if (recaptchaVerifier) {
-        recaptchaVerifier.clear();
-      }
-    }
-  });
-  return recaptchaVerifier;
-}
-
-
-export const signInWithPhoneNumber = async (auth: Auth, phoneNumber: string): Promise<ConfirmationResult> => {
-  const appVerifier = getRecaptchaVerifier(auth);
+export const signInWithEmail = async (auth: Auth, email: string, pass: string) => {
   try {
-    // We need to render the reCAPTCHA widget before calling signInWithPhoneNumber
-    await appVerifier.render();
-    const confirmationResult = await firebaseSignInWithPhoneNumber(auth, phoneNumber, appVerifier);
-    return confirmationResult;
+    const userCredential = await signInWithEmailAndPassword(auth, email, pass);
+    return userCredential.user;
   } catch (error) {
-    console.error('Error signing in with phone number', error);
-    // Reset reCAPTCHA on error
-    if (appVerifier) {
-      appVerifier.clear();
-    }
+    console.error('Error signing in with email and password', error);
     throw error;
   }
 };
 
-export const confirmVerificationCode = async (confirmationResult: ConfirmationResult, code: string) => {
+export const signUpWithEmail = async (auth: Auth, email: string, pass: string) => {
   try {
-    const result = await confirmationResult.confirm(code);
-    return result.user;
+    const userCredential = await createUserWithEmailAndPassword(auth, email, pass);
+    return userCredential.user;
   } catch (error) {
-    console.error('Error confirming verification code', error);
+    console.error('Error signing up with email and password', error);
+    throw error;
+  }
+};
+
+export const sendPasswordReset = async (auth: Auth, email: string) => {
+  try {
+    await sendPasswordResetEmail(auth, email);
+  } catch (error) {
+    console.error('Error sending password reset email', error);
     throw error;
   }
 }
+
+export const signInAsGuest = async (auth: Auth) => {
+  try {
+    const userCredential = await signInAnonymously(auth);
+    return userCredential.user;
+  } catch (error) {
+    console.error('Error signing in anonymously', error);
+    throw error;
+  }
+};
 
 export const signOut = async (auth: Auth): Promise<void> => {
   try {
     await signOutFirebase(auth);
   } catch (error) {
     console.error('Error signing out', error);
+    throw error;
   }
 };

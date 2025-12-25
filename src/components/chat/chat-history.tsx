@@ -32,8 +32,7 @@ export default function ChatHistory({
   const { user } = useUser();
   const firestore = useFirestore();
 
-  // The user's phone number is their unique ID
-  const userId = user?.phoneNumber;
+  const userId = user?.isAnonymous ? null : user?.uid;
 
   const chatHistoryQuery = (userId && firestore)
     ? query(
@@ -51,6 +50,7 @@ export default function ChatHistory({
         onSelectChat(newSession.id);
       }
     } else {
+      // For guest users or when offline
       onNewChat();
     }
   };
@@ -65,7 +65,12 @@ export default function ChatHistory({
         </Button>
       </SidebarHeader>
       <SidebarContent>
-        {loading && (
+        {!userId && (
+            <div className="px-4 py-2 text-xs text-muted-foreground">
+                Sign in to save your chat history.
+            </div>
+        )}
+        {loading && userId && (
           <div className="space-y-2 px-2">
             {[...Array(3)].map((_, i) => (
               <Skeleton key={i} className="h-10 w-full" />

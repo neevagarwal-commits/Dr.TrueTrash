@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect, useCallback } from 'react';
-import type { Message, Prediction, ChatMessage } from '@/lib/types';
+import type { Message, ChatMessage } from '@/lib/types';
 import ChatMessages from './chat-messages';
 import ChatInput from './chat-input';
 import { getAiResponse } from '@/app/actions';
@@ -35,7 +35,7 @@ export default function ChatWrapper({ chatId, onChatIdChange }: ChatWrapperProps
   const chatContainerRef = useRef<HTMLDivElement>(null);
   const { user } = useUser();
   const firestore = useFirestore();
-  const userId = user?.phoneNumber; // Use phone number as ID
+  const userId = user?.isAnonymous ? null : user?.uid;
 
   const messagesQuery = (chatId && userId && firestore) ? getChatMessagesQuery(firestore, userId, chatId) : null;
   const { data: firestoreMessages, loading: messagesLoading } = useCollection<ChatMessage>(messagesQuery);
@@ -55,13 +55,15 @@ export default function ChatWrapper({ chatId, onChatIdChange }: ChatWrapperProps
   }, []);
 
   useEffect(() => {
+    if (!chatId) {
+        setMessages([initialMessage]);
+        return;
+    }
     if (firestoreMessages) {
       const mappedMessages = firestoreMessages.map(mapFirestoreMessageToComponent);
       setMessages(mappedMessages.length > 0 ? mappedMessages : [initialMessage]);
-    } else {
-      setMessages([initialMessage]);
     }
-  }, [firestoreMessages, mapFirestoreMessageToComponent]);
+  }, [chatId, firestoreMessages, mapFirestoreMessageToComponent]);
 
 
   useEffect(() => {
@@ -71,86 +73,94 @@ export default function ChatWrapper({ chatId, onChatIdChange }: ChatWrapperProps
   }, [messages]);
 
   const handleSubmit = async (input: string) => {
-    if (!userId || !firestore) return;
     
-    let currentChatId = chatId;
-
-    // Create a new chat session if one doesn't exist
-    if (!currentChatId) {
-        const newSession = await createChatSession(firestore, userId);
-        if (newSession) {
-            currentChatId = newSession.id;
-            onChatIdChange(newSession.id);
-        } else {
-            // Handle error case where session creation fails
-            setIsLoading(false);
-            const errorMessage: Message = {
-                id: nanoid(),
-                role: 'assistant',
-                content: <p className="text-destructive">Could not start a new chat session. Please try again.</p>,
-            };
-            setMessages(prev => [...prev, errorMessage]);
-            return;
-        }
-    }
-
-
-    setIsLoading(true);
     const userMessageContent = input;
-    // Clear initial message on first user input
-    const initialUserMessage = messages.length === 1 && messages[0].id === 'initial';
     const userMessage: Message = { id: nanoid(), role: 'user', content: userMessageContent };
     
-    setMessages(prev => initialUserMessage ? [userMessage] : [...prev, userMessage]);
+    // Clear initial message on first user input, or if it's the only message.
+    const isFirstMessage = messages.length === 1 && messages[0].id === 'initial';
+    setMessages(isFirstMessage ? [userMessage] : [...prev, userMessage]);
     
+    setIsLoading(true);
 
-    // Save user message to Firestore
-    await addMessage(firestore, userId, currentChatId, {
-      role: 'user',
-      content: userMessageContent,
-    });
+    let currentChatId = chatId;
+    
+    // For registered users, handle Firestore logic
+    if (userId && firestore) {
+      if (!currentChatId) {
+          const newSession = await createChatSession(firestore, userId);
+          if (newSession) {
+              currentChatId = newSession.id;
+              onChatIdChange(newSession.id);
+          } else {
+              setIsLoading(false);
+              const errorMessage: Message = {
+                  id: nanoid(),
+                  role: 'assistant',
+                  content: <p className="text-destructive">Could not start a new chat session. Please try again.</p>,
+              };
+              setMessages(prev => [...prev, errorMessage]);
+              return;
+          }
+      }
+
+      await addMessage(firestore, userId, currentChatId, {
+        role: 'user',
+        content: userMessageContent,
+      });
+    }
 
     const result = await getAiResponse(input);
 
+    let assistantMessage: Message;
+
     if (result.error) {
-      const errorMessage: Message = {
+       assistantMessage = {
         id: nanoid(),
         role: 'assistant',
         content: <p className="text-destructive">{result.error}</p>,
       };
-      setMessages(prev => [...prev, errorMessage]);
-      // Save error message to Firestore
-      await addMessage(firestore, userId, currentChatId, {
-        role: 'assistant',
-        content: result.error,
-      });
+      if (userId && firestore && currentChatId) {
+        await addMessage(firestore, userId, currentChatId, {
+          role: 'assistant',
+          content: result.error,
+        });
+      }
     } else if (result.predictions) {
-      const assistantMessage: Message = {
+      assistantMessage = {
         id: nanoid(),
         role: 'assistant',
         content: <PredictionsDisplay predictions={result.predictions} />,
       };
-      setMessages(prev => [...prev, assistantMessage]);
-      // Save assistant message with predictions to Firestore
-      await addMessage(firestore, userId, currentChatId, {
-        role: 'assistant',
-        content: 'Based on your symptoms, here are some potential health issues.',
-        predictions: result.predictions,
-      });
-      
-      const isNewChat = firestoreMessages ? firestoreMessages.length < 2 : true;
-      if (isNewChat) {
-        const title = `Analysis of: ${input.substring(0,30)}...`;
-        await updateChatSessionTitle(firestore, userId, currentChatId, title);
+       if (userId && firestore && currentChatId) {
+        await addMessage(firestore, userId, currentChatId, {
+          role: 'assistant',
+          content: 'Based on your symptoms, here are some potential health issues.',
+          predictions: result.predictions,
+        });
+        
+        // Update title only for new chats for registered users
+        if (isFirstMessage) {
+            const title = `Analysis of: ${input.substring(0,30)}...`;
+            await updateChatSessionTitle(firestore, userId, currentChatId, title);
+        }
       }
+    } else {
+        assistantMessage = {
+            id: nanoid(),
+            role: 'assistant',
+            content: <p className="text-destructive">An unknown error occurred.</p>,
+        };
     }
+
+    setMessages(prev => [...prev, assistantMessage]);
     setIsLoading(false);
   };
 
   return (
     <div className="w-full max-w-3xl flex-1 flex flex-col bg-card rounded-xl shadow-lg border">
       <div ref={chatContainerRef} className="flex-1 p-6 overflow-y-auto">
-        {messagesLoading && messages.length <= 1 ? (
+        {(messagesLoading && userId) ? (
           <div className="flex justify-center items-center h-full">
             <LoaderCircle className="h-8 w-8 animate-spin text-primary" />
           </div>
@@ -170,7 +180,7 @@ export default function ChatWrapper({ chatId, onChatIdChange }: ChatWrapperProps
         )}
       </div>
       <div className="p-4 border-t">
-        <ChatInput onSubmit={handleSubmit} isLoading={isLoading || messagesLoading || !user} />
+        <ChatInput onSubmit={handleSubmit} isLoading={isLoading || (messagesLoading && !!userId)} />
       </div>
     </div>
   );

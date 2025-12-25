@@ -30,7 +30,7 @@ export default function Header() {
           </h1>
         </div>
         <nav className="flex items-center gap-2">
-          {user && (
+          {user && !user.isAnonymous && (
             <Button asChild variant="ghost" className="text-slate-800 hover:bg-white/20">
               <Link href="/accuracy">Check Accuracy</Link>
             </Button>
