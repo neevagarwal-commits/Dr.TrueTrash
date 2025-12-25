@@ -27,24 +27,26 @@ type NewMessagePayload = {
   predictions?: Prediction[];
 };
 
-export function addMessage(
+export async function addMessage(
   firestore: Firestore,
   userId: string,
   chatSessionId: string,
   payload: NewMessagePayload
 ) {
   const messagesColRef = collection(firestore, `users/${userId}/chatSessions/${chatSessionId}/messages`);
-  addDoc(messagesColRef, {
-    ...payload,
-    createdAt: serverTimestamp(),
-  }).catch((serverError) => {
+  try {
+    await addDoc(messagesColRef, {
+      ...payload,
+      createdAt: serverTimestamp(),
+    });
+  } catch(serverError) {
     const permissionError = new FirestorePermissionError({
         path: messagesColRef.path,
         operation: 'create',
         requestResourceData: payload,
     });
     errorEmitter.emit('permission-error', permissionError);
-  });
+  };
 }
 
 export async function createChatSession(firestore: Firestore, userId: string): Promise<string | null> {
@@ -67,14 +69,16 @@ export async function createChatSession(firestore: Firestore, userId: string): P
   }
 }
 
-export function updateChatSessionTitle(firestore: Firestore, userId: string, chatSessionId: string, title: string) {
-  const sessionDocRef = doc(firestore, `users/${userId}/chatSessions`, chatSessionId);
-  updateDoc(sessionDocRef, { title }).catch((serverError) => {
-    const permissionError = new FirestorePermissionError({
-        path: sessionDocRef.path,
-        operation: 'update',
-        requestResourceData: { title },
-    });
-    errorEmitter.emit('permission-error', permissionError);
-  });
+export async function updateChatSessionTitle(firestore: Firestore, userId: string, chatSessionId: string, title: string) {
+    const sessionDocRef = doc(firestore, `users/${userId}/chatSessions`, chatSessionId);
+    try {
+      await updateDoc(sessionDocRef, { title });
+    } catch(serverError) {
+        const permissionError = new FirestorePermissionError({
+            path: sessionDocRef.path,
+            operation: 'update',
+            requestResourceData: { title },
+        });
+        errorEmitter.emit('permission-error', permissionError);
+    };
 }
