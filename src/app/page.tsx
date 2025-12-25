@@ -75,7 +75,8 @@ export default function Home() {
     }
   };
 
-  const handleEmailSignUp = async () => {
+  const handleEmailSignUp = async (e: React.FormEvent) => {
+    e.preventDefault();
     if (!auth) return;
     setIsProcessing(true);
     setError(null);
@@ -89,7 +90,8 @@ export default function Home() {
     }
   };
 
-  const handleEmailSignIn = async () => {
+  const handleEmailSignIn = async (e: React.FormEvent) => {
+    e.preventDefault();
     if (!auth) return;
     setIsProcessing(true);
     setError(null);
@@ -143,14 +145,16 @@ export default function Home() {
                   <CardDescription>Sign in to save your chat history or continue as a guest.</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                   <Button onClick={handleGoogleSignIn} variant="outline" className="w-full" disabled={isProcessing}>
-                    {isProcessing ? <LoaderCircle className="mr-2 h-4 w-4 animate-spin" /> : <svg className="mr-2 h-4 w-4" role="img" viewBox="0 0 24 24"><path fill="currentColor" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" /></svg>}
-                    Sign in with Google
-                  </Button>
-                  <Button onClick={handleGuestSignIn} variant="secondary" className="w-full" disabled={isProcessing}>
-                    {isProcessing ? <LoaderCircle className="mr-2 h-4 w-4 animate-spin" /> : <User className="mr-2 h-4 w-4" />}
-                    Continue as Guest
-                  </Button>
+                   <div className="flex flex-col space-y-2">
+                    <Button onClick={handleGoogleSignIn} variant="outline" className="w-full" disabled={isProcessing}>
+                      {isProcessing ? <LoaderCircle className="mr-2 h-4 w-4 animate-spin" /> : <svg className="mr-2 h-4 w-4" role="img" viewBox="0 0 24 24"><path fill="currentColor" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" /></svg>}
+                      Sign in with Google
+                    </Button>
+                    <Button onClick={handleGuestSignIn} variant="secondary" className="w-full" disabled={isProcessing}>
+                      {isProcessing ? <LoaderCircle className="mr-2 h-4 w-4 animate-spin" /> : <User className="mr-2 h-4 w-4" />}
+                      Continue as Guest
+                    </Button>
+                   </div>
                   <div className="relative">
                     <div className="absolute inset-0 flex items-center">
                       <span className="w-full border-t" />
@@ -161,58 +165,79 @@ export default function Home() {
                       </span>
                     </div>
                   </div>
+                  {error && <p className="text-sm text-destructive">{error}</p>}
+                  {info && <p className="text-sm text-blue-500">{info}</p>}
                   <Tabs defaultValue="signin" className="w-full">
                     <TabsList className="grid w-full grid-cols-2">
                       <TabsTrigger value="signin">Sign In</TabsTrigger>
                       <TabsTrigger value="signup">Sign Up</TabsTrigger>
                     </TabsList>
-                    <div className="space-y-4 pt-4">
-                       <div className="relative">
-                        <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                        <Input 
-                          type="email" 
-                          placeholder="email@example.com" 
-                          className="pl-10"
-                          value={email}
-                          onChange={(e) => setEmail(e.target.value)}
-                          disabled={isProcessing}
-                        />
-                      </div>
-                       <div className="relative">
-                        <KeyRound className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                        <Input 
-                          type="password" 
-                          placeholder="Password" 
-                          className="pl-10"
-                          value={password}
-                          onChange={(e) => setPassword(e.target.value)}
-                          disabled={isProcessing}
-                        />
-                      </div>
-                    </div>
                     <TabsContent value="signin">
-                       <div className="flex flex-col gap-4 pt-4">
-                          <Button onClick={handleEmailSignIn} disabled={isProcessing}>
-                            {isProcessing ? <LoaderCircle className="mr-2 h-4 w-4 animate-spin" /> : null}
-                            Sign In
-                          </Button>
-                           <Button variant="link" size="sm" className="text-muted-foreground" onClick={handlePasswordReset} disabled={isProcessing}>
-                            Forgot Password?
-                          </Button>
-                       </div>
+                      <form onSubmit={handleEmailSignIn} className="space-y-4 pt-4">
+                         <div className="relative">
+                          <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                          <Input 
+                            type="email" 
+                            placeholder="email@example.com" 
+                            className="pl-10"
+                            value={email}
+                            onChange={(e) => setEmail(e.target.value)}
+                            disabled={isProcessing}
+                          />
+                        </div>
+                         <div className="relative">
+                          <KeyRound className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                          <Input 
+                            type="password" 
+                            placeholder="Password" 
+                            className="pl-10"
+                            value={password}
+                            onChange={(e) => setPassword(e.target.value)}
+                            disabled={isProcessing}
+                          />
+                        </div>
+                        <div className="flex flex-col gap-2 pt-2">
+                            <Button type="submit" disabled={isProcessing}>
+                              {isProcessing ? <LoaderCircle className="mr-2 h-4 w-4 animate-spin" /> : null}
+                              Sign In
+                            </Button>
+                             <Button variant="link" size="sm" type="button" className="text-muted-foreground" onClick={handlePasswordReset} disabled={isProcessing}>
+                              Forgot Password?
+                            </Button>
+                         </div>
+                      </form>
                     </TabsContent>
                     <TabsContent value="signup">
-                       <div className="pt-4">
-                         <Button onClick={handleEmailSignUp} disabled={isProcessing} className="w-full">
+                       <form onSubmit={handleEmailSignUp} className="space-y-4 pt-4">
+                          <div className="relative">
+                            <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                            <Input 
+                              type="email" 
+                              placeholder="email@example.com" 
+                              className="pl-10"
+                              value={email}
+                              onChange={(e) => setEmail(e.target.value)}
+                              disabled={isProcessing}
+                            />
+                          </div>
+                           <div className="relative">
+                            <KeyRound className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                            <Input 
+                              type="password" 
+                              placeholder="Password" 
+                              className="pl-10"
+                              value={password}
+                              onChange={(e) => setPassword(e.target.value)}
+                              disabled={isProcessing}
+                            />
+                          </div>
+                         <Button type="submit" disabled={isProcessing} className="w-full">
                             {isProcessing ? <LoaderCircle className="mr-2 h-4 w-4 animate-spin" /> : null}
                             Create Account
                           </Button>
-                       </div>
+                       </form>
                     </TabsContent>
                   </Tabs>
-
-                  {error && <p className="text-sm text-destructive">{error}</p>}
-                  {info && <p className="text-sm text-blue-500">{info}</p>}
                 </CardContent>
               </Card>
           </main>
