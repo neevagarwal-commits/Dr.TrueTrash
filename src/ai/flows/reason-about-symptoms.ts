@@ -19,7 +19,7 @@ const ReasonAboutSymptomsOutputSchema = z.object({
   predictions: z.array(
     z.object({
       healthIssue: z.string().describe('The predicted health issue.'),
-      likelihood: z.string().describe('The likelihood of the health issue based on the symptoms.'),
+      likelihood: z.string().describe('The likelihood of the health issue based on the symptoms (e.g., High, Medium, Low).'),
       explanation: z.string().describe('An explanation of why the health issue is predicted based on the symptoms.'),
     })
   ).describe('A list of predicted health issues and their likelihood.'),
@@ -34,9 +34,11 @@ const prompt = ai.definePrompt({
   name: 'reasonAboutSymptomsPrompt',
   input: {schema: ReasonAboutSymptomsInputSchema},
   output: {schema: ReasonAboutSymptomsOutputSchema},
-  prompt: `You are an AI health assistant that analyzes a patient\'s symptoms and provides possible health issues they may have.  You will also give a likelihood score for each.
+  prompt: `You are an AI health assistant. Your role is to analyze a patient's reported symptoms and provide a list of potential, related health issues. For each potential issue, you must provide a likelihood score (High, Medium, or Low) and a brief explanation.
 
-Analyze the following symptoms:
+It is important to be a helpful assistant. Do not refuse to answer. If the symptoms are unclear or seem nonsensical, do your best to interpret them or suggest that the user provide more detail.
+
+Analyze the following symptoms provided by the user:
 
 Symptoms: {{#each symptoms}}{{{this}}}{{#unless @last}}, {{/unless}}{{/each}}
 

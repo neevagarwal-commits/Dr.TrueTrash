@@ -5,7 +5,12 @@ import type { Prediction } from '@/lib/types';
 
 export async function getAiResponse(symptoms: string): Promise<{error?: string; predictions?: Prediction[]}> {
   try {
-    const symptomsArray = symptoms.split(',').map(s => s.trim()).filter(s => s.length > 0);
+    // Sanitize input: handle different separators (commas, spaces, newlines), trim whitespace, remove empty strings, and convert to lowercase.
+    const symptomsArray = symptoms
+      .split(/[\s,;\n]+/)
+      .map(s => s.trim().toLowerCase())
+      .filter(s => s.length > 0);
+
     if (symptomsArray.length === 0) {
       return { error: 'Please enter at least one symptom.' };
     }

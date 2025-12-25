@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { ArrowUp } from 'lucide-react';
 
 const formSchema = z.object({
-  prompt: z.string().min(3, { message: 'Please enter at least one symptom.' }),
+  prompt: z.string().min(1, { message: 'Please enter at least one symptom.' }),
 });
 
 interface ChatInputProps {
