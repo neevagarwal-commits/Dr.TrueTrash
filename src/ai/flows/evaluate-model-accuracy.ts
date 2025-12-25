@@ -9,7 +9,7 @@
  */
 
 import {ai} from '@/ai/genkit';
-import {z} from 'genkit';
+import {z}from 'genkit';
 
 const EvaluateModelAccuracyInputSchema = z.object({
   validationData: z.string().describe('The validation dataset in JSON format.'),

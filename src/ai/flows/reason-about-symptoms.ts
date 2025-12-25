@@ -1,6 +1,7 @@
 'use server';
 /**
  * @fileOverview AI agent for reasoning about symptoms and predicting potential health issues.
+ * This flow simulates a classic machine learning model like a Decision Tree or Naive Bayes.
  *
  * - reasonAboutSymptoms - A function that takes a list of symptoms and predicts potential health issues.
  * - ReasonAboutSymptomsInput - The input type for the reasonAboutSymptoms function.
@@ -9,6 +10,7 @@
 
 import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
+import {dataPreprocessingAndFeatureExtraction} from './data-preprocessing-and-feature-extraction';
 
 const ReasonAboutSymptomsInputSchema = z.object({
   symptoms: z.array(z.string()).describe('A list of symptoms provided by the user.'),
@@ -32,17 +34,18 @@ export async function reasonAboutSymptoms(input: ReasonAboutSymptomsInput): Prom
 
 const prompt = ai.definePrompt({
   name: 'reasonAboutSymptomsPrompt',
-  input: {schema: ReasonAboutSymptomsInputSchema},
+  input: {schema: z.object({preprocessedData: z.string(), extractedFeatures: z.string()})},
   output: {schema: ReasonAboutSymptomsOutputSchema},
-  prompt: `You are an AI health assistant. Your role is to analyze a patient's reported symptoms and provide a list of potential, related health issues. For each potential issue, you must provide a likelihood score (High, Medium, or Low) and a brief explanation.
+  prompt: `You are simulating a classic machine learning model (like a Decision Tree or Naive Bayes) for predicting health issues from symptoms.
 
-It is important to be a helpful assistant. Do not refuse to answer. If the symptoms are unclear or seem nonsensical, do your best to interpret them or suggest that the user provide more detail.
+You have been provided with preprocessed data and extracted features. Use this information to make a prediction.
 
-Analyze the following symptoms provided by the user:
+**IMPORTANT**: Your reasoning should mimic a simple, rule-based model. Do not use complex medical knowledge. Base your predictions strictly on the input features. For example, if the features are "fever" and "cough", a reasonable prediction is "Common Cold" or "Flu".
 
-Symptoms: {{#each symptoms}}{{{this}}}{{#unless @last}}, {{/unless}}{{/each}}
+Preprocessed Data: {{{preprocessedData}}}
+Extracted Features: {{{extractedFeatures}}}
 
-Based on these symptoms, provide a list of potential health issues, their likelihood, and an explanation for each prediction. Use the output schema to guide your response formatting.`, 
+Based on these features, provide a list of potential health issues, their likelihood, and a simple, rule-based explanation for each prediction. Use the output schema to guide your response formatting.`, 
 });
 
 const reasonAboutSymptomsFlow = ai.defineFlow(
@@ -52,7 +55,13 @@ const reasonAboutSymptomsFlow = ai.defineFlow(
     outputSchema: ReasonAboutSymptomsOutputSchema,
   },
   async input => {
-    const {output} = await prompt(input);
+    // 1. Data Preprocessing Step
+    const preprocessingOutput = await dataPreprocessingAndFeatureExtraction({
+      symptoms: input.symptoms.join(','),
+    });
+
+    // 2. ML Model Prediction Step
+    const {output} = await prompt(preprocessingOutput);
     return output!;
   }
 );
