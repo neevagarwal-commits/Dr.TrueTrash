@@ -6,32 +6,30 @@ import { useAuth } from '@/firebase';
 
 export const useUser = () => {
   const auth = useAuth();
-  const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
+  // Start with user as undefined to represent the initial "unknown" state
+  const [user, setUser] = useState<User | null | undefined>(undefined);
+  
+  // The loading state is true until we have a definitive user or null
+  const loading = user === undefined;
 
   useEffect(() => {
-    // If the auth object is not available yet, we are in a loading state.
-    if (auth === undefined) {
-      setLoading(true);
-      return;
-    }
-    
-    // If auth is null, it means Firebase is not initialized (e.g. missing config), so we are not loading and there's no user.
-    if (auth === null) {
-      setLoading(false);
-      setUser(null);
+    // If auth is not yet available, do nothing. The hook will re-run when it is.
+    if (!auth) {
+      // If auth is explicitly null (meaning Firebase isn't configured), we can stop loading.
+      if (auth === null) {
+        setUser(null);
+      }
       return;
     }
 
-    // Otherwise, we can subscribe to the auth state changes.
+    // Subscribe to Firebase auth state changes
     const unsubscribe = auth.onAuthStateChanged(user => {
-      setUser(user);
-      setLoading(false);
+      setUser(user); // user will be null if not logged in, or a User object if logged in
     });
 
     // Cleanup subscription on unmount
     return () => unsubscribe();
-  }, [auth]);
+  }, [auth]); // The effect depends on the auth instance
 
   return { user, loading };
 };
