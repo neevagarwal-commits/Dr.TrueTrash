@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import ChatWrapper from '@/components/chat/chat-wrapper';
 import Header from '@/components/layout/header';
 import {
@@ -40,7 +40,9 @@ export default function Home() {
       setIsSendingCode(true);
       setError(null);
       try {
-        const result = await signInWithPhoneNumber(auth, `+${phoneNumber}`);
+        // Ensure the phone number includes the country code and is prefixed with '+'
+        const formattedPhoneNumber = phoneNumber.startsWith('+') ? phoneNumber : `+${phoneNumber}`;
+        const result = await signInWithPhoneNumber(auth, formattedPhoneNumber);
         setConfirmationResult(result);
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to send verification code.');

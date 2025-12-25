@@ -11,14 +11,24 @@ import {
 let recaptchaVerifier: RecaptchaVerifier | null = null;
 
 const getRecaptchaVerifier = (auth: Auth) => {
-  if (!recaptchaVerifier) {
-    recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
-      size: 'invisible',
-      callback: (response: any) => {
-        // reCAPTCHA solved, allow signInWithPhoneNumber.
-      },
-    });
+  if (recaptchaVerifier) {
+    recaptchaVerifier.clear();
+    recaptchaVerifier = null;
   }
+  
+  recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
+    size: 'invisible',
+    callback: (response: any) => {
+      // reCAPTCHA solved, allow signInWithPhoneNumber.
+      // This callback is for invisible reCAPTCHA.
+    },
+    'expired-callback': () => {
+      // Response expired. Ask user to solve reCAPTCHA again.
+      if (recaptchaVerifier) {
+        recaptchaVerifier.clear();
+      }
+    }
+  });
   return recaptchaVerifier;
 }
 
@@ -26,12 +36,16 @@ const getRecaptchaVerifier = (auth: Auth) => {
 export const signInWithPhoneNumber = async (auth: Auth, phoneNumber: string): Promise<ConfirmationResult> => {
   const appVerifier = getRecaptchaVerifier(auth);
   try {
+    // We need to render the reCAPTCHA widget before calling signInWithPhoneNumber
+    await appVerifier.render();
     const confirmationResult = await firebaseSignInWithPhoneNumber(auth, phoneNumber, appVerifier);
     return confirmationResult;
   } catch (error) {
     console.error('Error signing in with phone number', error);
-    // Reset reCAPTCHA
-    recaptchaVerifier?.clear();
+    // Reset reCAPTCHA on error
+    if (appVerifier) {
+      appVerifier.clear();
+    }
     throw error;
   }
 };
