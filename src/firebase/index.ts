@@ -1,3 +1,4 @@
+
 import { getApps, initializeApp, type FirebaseApp } from 'firebase/app';
 import { getAuth, type Auth } from 'firebase/auth';
 import { getFirestore, type Firestore } from 'firebase/firestore';
@@ -8,7 +9,7 @@ function initializeFirebase(): {
   auth: Auth;
   firestore: Firestore;
 } | null {
-  if (typeof window === 'undefined') {
+  if (typeof window === 'undefined' || !firebaseConfig.apiKey || firebaseConfig.apiKey === 'your-api-key') {
     return null;
   }
   const apps = getApps();
