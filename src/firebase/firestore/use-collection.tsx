@@ -20,15 +20,9 @@ export const useCollection = <T extends DocumentData>(
   const [data, setData] = useState<T[] | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<FirestoreError | null>(null);
-  const queryRef = useRef(query);
-
-  // Deep compare query to avoid re-running effect if the query instance changes but the query itself is the same
-  if (queryRef.current?.path !== query?.path || queryRef.current?.converter !== query?.converter) {
-     queryRef.current = query;
-  }
 
   useEffect(() => {
-    if (!queryRef.current) {
+    if (!query) {
       setData(null);
       setLoading(false);
       return;
@@ -37,7 +31,7 @@ export const useCollection = <T extends DocumentData>(
     setLoading(true);
 
     const unsubscribe = onSnapshot(
-      queryRef.current,
+      query,
       (snapshot: QuerySnapshot<T>) => {
         const docs = snapshot.docs.map(doc => ({
           ...doc.data(),
@@ -55,7 +49,7 @@ export const useCollection = <T extends DocumentData>(
     );
 
     return () => unsubscribe();
-  }, [queryRef.current]);
+  }, [query]); // Simplified dependency array to just query
 
   return { data, loading, error };
 };
