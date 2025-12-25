@@ -10,11 +10,13 @@ import {
   doc,
   updateDoc,
 } from 'firebase/firestore';
-import type { ChatMessage, Prediction } from '@/lib/types';
+import type { Prediction } from '@/lib/types';
+import { errorEmitter } from '../error-emitter';
+import { FirestorePermissionError } from '../errors';
 
-export function getChatMessagesQuery(firestore: Firestore, chatSessionId: string) {
+export function getChatMessagesQuery(firestore: Firestore, userId: string, chatSessionId: string) {
   return query(
-    collection(firestore, `chats/${chatSessionId}/messages`),
+    collection(firestore, `users/${userId}/chatSessions/${chatSessionId}/messages`),
     orderBy('createdAt', 'asc')
   );
 }
@@ -27,27 +29,52 @@ type NewMessagePayload = {
 
 export async function addMessage(
   firestore: Firestore,
+  userId: string,
   chatSessionId: string,
   payload: NewMessagePayload
 ): Promise<void> {
-  const messagesCol = collection(firestore, `users/${chatSessionId}/messages`);
-  await addDoc(messagesCol, {
+  const messagesColRef = collection(firestore, `users/${userId}/chatSessions/${chatSessionId}/messages`);
+  addDoc(messagesColRef, {
     ...payload,
     createdAt: serverTimestamp(),
+  }).catch((serverError) => {
+    const permissionError = new FirestorePermissionError({
+        path: messagesColRef.path,
+        operation: 'create',
+        requestResourceData: payload,
+    });
+    errorEmitter.emit('permission-error', permissionError);
   });
 }
 
 export async function createChatSession(firestore: Firestore, userId: string) {
-  const chatSessionsCol = collection(firestore, `users/${userId}/chatSessions`);
-  const newSessionRef = await addDoc(chatSessionsCol, {
-    userId: userId,
-    createdAt: serverTimestamp(),
-    title: "New Chat"
-  });
-  return { id: newSessionRef.id };
+  try {
+    const chatSessionsCol = collection(firestore, `users/${userId}/chatSessions`);
+    const newSessionRef = await addDoc(chatSessionsCol, {
+      userId: userId,
+      createdAt: serverTimestamp(),
+      title: "New Chat"
+    });
+    return { id: newSessionRef.id };
+  } catch (serverError) {
+      const permissionError = new FirestorePermissionError({
+          path: `users/${userId}/chatSessions`,
+          operation: 'create',
+          requestResourceData: { userId, title: 'New Chat' },
+      });
+      errorEmitter.emit('permission-error', permissionError);
+      return null;
+  }
 }
 
 export async function updateChatSessionTitle(firestore: Firestore, userId: string, chatSessionId: string, title: string) {
-  const sessionDoc = doc(firestore, `users/${userId}/chatSessions`, chatSessionId);
-  await updateDoc(sessionDoc, { title });
+  const sessionDocRef = doc(firestore, `users/${userId}/chatSessions`, chatSessionId);
+  updateDoc(sessionDocRef, { title }).catch((serverError) => {
+    const permissionError = new FirestorePermissionError({
+        path: sessionDocRef.path,
+        operation: 'update',
+        requestResourceData: { title },
+    });
+    errorEmitter.emit('permission-error', permissionError);
+  });
 }

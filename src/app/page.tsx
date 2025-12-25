@@ -50,7 +50,7 @@ export default function Home() {
             <div className="max-w-md space-y-4">
               <h2 className="text-2xl font-bold">Welcome to DR.TRUETRASH</h2>
               <p className="text-muted-foreground">Please sign in to start a new chat session and save your history.</p>
-              <Button onClick={handleSignIn}>
+              <Button onClick={handleSignIn} disabled={!auth}>
                 <LogIn className="mr-2 h-4 w-4" /> Sign In with Google
               </Button>
             </div>
@@ -78,7 +78,7 @@ export default function Home() {
         <div className="flex flex-col min-h-screen bg-secondary/50 dark:bg-background">
           <Header />
           <main className="flex-1 flex flex-col items-center py-8 px-4">
-            <ChatWrapper chatId={currentChatId} />
+            <ChatWrapper chatId={currentChatId} onChatIdChange={setCurrentChatId} />
           </main>
           <footer className="py-4 text-center text-sm text-muted-foreground">
             <p>
