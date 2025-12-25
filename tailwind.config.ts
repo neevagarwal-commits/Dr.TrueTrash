@@ -10,11 +10,12 @@ export default {
   theme: {
     extend: {
       fontFamily: {
-        body: ['Inter', 'sans-serif'],
-        headline: ['Inter', 'sans-serif'],
+        body: ['Roboto', 'sans-serif'],
+        headline: ['Montserrat', 'sans-serif'],
         code: ['monospace'],
       },
       colors: {
+        'health-green': 'hsl(var(--health-green))',
         background: 'hsl(var(--background))',
         foreground: 'hsl(var(--foreground))',
         card: {
