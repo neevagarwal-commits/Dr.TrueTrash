@@ -45,8 +45,8 @@ export default function Header() {
               <LogOut className="mr-2 h-4 w-4" /> Sign Out
             </Button>
           ) : (
-            <Button onClick={handleSignIn} variant="ghost" className="text-slate-800 hover:bg-white/20">
-              <LogIn className="mr-2 h-4 w-4" /> Sign In
+            <Button onClick={handleSignIn} variant="ghost" className="text-slate-800 hover:bg-white/20" disabled={!auth}>
+              <LogIn className="mr-2 h-4 w-4" /> Sign In with Google
             </Button>
           )}
         </nav>
