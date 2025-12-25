@@ -3,7 +3,7 @@ import { Toaster } from "@/components/ui/toaster";
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'HealthWise AI',
+  title: 'DR.TRUETRASH',
   description: 'Your personal AI health assistant for symptom analysis.',
 };
 

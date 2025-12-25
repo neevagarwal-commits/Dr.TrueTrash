@@ -15,7 +15,7 @@ const initialMessage: Message = {
   role: 'assistant',
   content: (
     <div className="space-y-2">
-      <p>Hello! I'm HealthWise AI, your personal health assistant.</p>
+      <p>Hello! I'm DR.TRUETRASH, your personal health assistant.</p>
       <p>Please describe your symptoms, separated by commas (e.g., "fever, headache, sore throat").</p>
     </div>
   ),
