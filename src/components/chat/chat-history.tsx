@@ -32,9 +32,12 @@ export default function ChatHistory({
   const { user } = useUser();
   const firestore = useFirestore();
 
-  const chatHistoryQuery = user
+  // The user's phone number is their unique ID
+  const userId = user?.phoneNumber;
+
+  const chatHistoryQuery = (userId && firestore)
     ? query(
-        collection(firestore, `users/${user.uid}/chatSessions`),
+        collection(firestore, `users/${userId}/chatSessions`),
         orderBy('createdAt', 'desc')
       )
     : null;
@@ -42,8 +45,8 @@ export default function ChatHistory({
   const { data: chatHistory, loading } = useCollection<ChatSession>(chatHistoryQuery);
 
   const handleNewChat = async () => {
-    if (user) {
-      const newSession = await createChatSession(firestore, user.uid);
+    if (userId && firestore) {
+      const newSession = await createChatSession(firestore, userId);
       if (newSession) {
         onSelectChat(newSession.id);
       }

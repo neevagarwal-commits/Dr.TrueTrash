@@ -3,21 +3,15 @@
 
 import { SidebarTrigger } from '@/components/ui/sidebar';
 import { Button } from '@/components/ui/button';
-import { HeartPulse, LogIn, LogOut } from 'lucide-react';
+import { HeartPulse, LogOut } from 'lucide-react';
 import Link from 'next/link';
 import { useUser } from '@/firebase/auth/use-user';
-import { signInWithGoogle, signOut } from '@/firebase/auth/client';
+import { signOut } from '@/firebase/auth/client';
 import { useAuth } from '@/firebase';
 
 export default function Header() {
   const { user, loading } = useUser();
   const auth = useAuth();
-
-  const handleSignIn = async () => {
-    if (auth) {
-      await signInWithGoogle(auth);
-    }
-  };
 
   const handleSignOut = async () => {
     if (auth) {
@@ -45,11 +39,7 @@ export default function Header() {
             <Button onClick={handleSignOut} variant="ghost" className="text-slate-800 hover:bg-white/20">
               <LogOut className="mr-2 h-4 w-4" /> Sign Out
             </Button>
-          ) : (
-            <Button onClick={handleSignIn} variant="ghost" className="text-slate-800 hover:bg-white/20" disabled={!auth}>
-              <LogIn className="mr-2 h-4 w-4" /> Sign In with Google
-            </Button>
-          )}
+          ) : null }
         </nav>
       </div>
     </header>

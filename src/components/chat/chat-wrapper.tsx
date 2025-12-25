@@ -12,7 +12,6 @@ import { useUser } from '@/firebase/auth/use-user';
 import { useFirestore } from '@/firebase';
 import { useCollection } from '@/firebase/firestore/use-collection';
 import { addMessage, getChatMessagesQuery, updateChatSessionTitle, createChatSession } from '@/firebase/firestore/chat';
-import { collection, query, orderBy } from 'firebase/firestore';
 
 const initialMessage: Message = {
   id: 'initial',
@@ -36,8 +35,9 @@ export default function ChatWrapper({ chatId, onChatIdChange }: ChatWrapperProps
   const chatContainerRef = useRef<HTMLDivElement>(null);
   const { user } = useUser();
   const firestore = useFirestore();
+  const userId = user?.phoneNumber; // Use phone number as ID
 
-  const messagesQuery = (chatId && user) ? getChatMessagesQuery(firestore, user.uid, chatId) : null;
+  const messagesQuery = (chatId && userId && firestore) ? getChatMessagesQuery(firestore, userId, chatId) : null;
   const { data: firestoreMessages, loading: messagesLoading } = useCollection<ChatMessage>(messagesQuery);
 
   const mapFirestoreMessageToComponent = useCallback((msg: ChatMessage): Message => {
@@ -71,13 +71,13 @@ export default function ChatWrapper({ chatId, onChatIdChange }: ChatWrapperProps
   }, [messages]);
 
   const handleSubmit = async (input: string) => {
-    if (!user || !firestore) return;
+    if (!userId || !firestore) return;
     
     let currentChatId = chatId;
 
     // Create a new chat session if one doesn't exist
     if (!currentChatId) {
-        const newSession = await createChatSession(firestore, user.uid);
+        const newSession = await createChatSession(firestore, userId);
         if (newSession) {
             currentChatId = newSession.id;
             onChatIdChange(newSession.id);
@@ -105,7 +105,7 @@ export default function ChatWrapper({ chatId, onChatIdChange }: ChatWrapperProps
     
 
     // Save user message to Firestore
-    await addMessage(firestore, user.uid, currentChatId, {
+    await addMessage(firestore, userId, currentChatId, {
       role: 'user',
       content: userMessageContent,
     });
@@ -120,7 +120,7 @@ export default function ChatWrapper({ chatId, onChatIdChange }: ChatWrapperProps
       };
       setMessages(prev => [...prev, errorMessage]);
       // Save error message to Firestore
-      await addMessage(firestore, user.uid, currentChatId, {
+      await addMessage(firestore, userId, currentChatId, {
         role: 'assistant',
         content: result.error,
       });
@@ -132,7 +132,7 @@ export default function ChatWrapper({ chatId, onChatIdChange }: ChatWrapperProps
       };
       setMessages(prev => [...prev, assistantMessage]);
       // Save assistant message with predictions to Firestore
-      await addMessage(firestore, user.uid, currentChatId, {
+      await addMessage(firestore, userId, currentChatId, {
         role: 'assistant',
         content: 'Based on your symptoms, here are some potential health issues.',
         predictions: result.predictions,
@@ -141,7 +141,7 @@ export default function ChatWrapper({ chatId, onChatIdChange }: ChatWrapperProps
       const isNewChat = firestoreMessages ? firestoreMessages.length < 2 : true;
       if (isNewChat) {
         const title = `Analysis of: ${input.substring(0,30)}...`;
-        await updateChatSessionTitle(firestore, user.uid, currentChatId, title);
+        await updateChatSessionTitle(firestore, userId, currentChatId, title);
       }
     }
     setIsLoading(false);

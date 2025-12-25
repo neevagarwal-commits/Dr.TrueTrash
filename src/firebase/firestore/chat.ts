@@ -15,6 +15,7 @@ import { errorEmitter } from '../error-emitter';
 import { FirestorePermissionError } from '../errors';
 
 export function getChatMessagesQuery(firestore: Firestore, userId: string, chatSessionId: string) {
+  // Use phone number as userId
   return query(
     collection(firestore, `users/${userId}/chatSessions/${chatSessionId}/messages`),
     orderBy('createdAt', 'asc')
@@ -29,7 +30,7 @@ type NewMessagePayload = {
 
 export async function addMessage(
   firestore: Firestore,
-  userId: string,
+  userId: string, // phone number
   chatSessionId: string,
   payload: NewMessagePayload
 ): Promise<void> {
@@ -47,7 +48,7 @@ export async function addMessage(
   });
 }
 
-export async function createChatSession(firestore: Firestore, userId: string) {
+export async function createChatSession(firestore: Firestore, userId: string) { // userId is phone number
   try {
     const chatSessionsCol = collection(firestore, `users/${userId}/chatSessions`);
     const newSessionRef = await addDoc(chatSessionsCol, {
