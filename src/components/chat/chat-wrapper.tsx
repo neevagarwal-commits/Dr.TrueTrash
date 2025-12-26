@@ -32,7 +32,7 @@ interface ChatWrapperProps {
   onNewChat: () => void;
 }
 
-export default function ChatWrapper({ userId, chatId, onChatIdChange, onNewChat }: ChatWrapperProps) {
+export default function ChatWrapper({ userId, chatId: currentChatId, onChatIdChange, onNewChat }: ChatWrapperProps) {
   const [messages, setMessages] = useState<Message[]>([initialMessage]);
   const [isLoading, setIsLoading] = useState(false);
   const [pendingInput, setPendingInput] = useState<string | null>(null);
@@ -40,8 +40,8 @@ export default function ChatWrapper({ userId, chatId, onChatIdChange, onNewChat 
   const firestore = useFirestore();
 
   const messagesQuery =
-    firestore && chatId && userId
-      ? query(collection(firestore, 'users', userId, 'chats', chatId, 'messages'), orderBy('createdAt', 'asc'))
+    firestore && currentChatId && userId
+      ? query(collection(firestore, 'users', userId, 'chats', currentChatId, 'messages'), orderBy('createdAt', 'asc'))
       : null;
 
   const { data: chatMessages, loading: messagesLoading } = useCollection<ChatMessage>(messagesQuery);
@@ -54,10 +54,10 @@ export default function ChatWrapper({ userId, chatId, onChatIdChange, onNewChat 
         content: msg.predictions ? <PredictionsDisplay predictions={msg.predictions} /> : msg.content,
       }));
       setMessages(loadedMessages);
-    } else if (!messagesLoading && !chatId) {
+    } else if (!messagesLoading && !currentChatId) {
       setMessages([initialMessage]);
     }
-  }, [chatMessages, messagesLoading, chatId]);
+  }, [chatMessages, messagesLoading, currentChatId]);
   
 
   useEffect(() => {
@@ -68,42 +68,40 @@ export default function ChatWrapper({ userId, chatId, onChatIdChange, onNewChat 
   
   useEffect(() => {
     // This effect runs when a new chatId is set and there's a pending message to be sent.
-    if (chatId && pendingInput) {
+    if (currentChatId && pendingInput) {
       const input = pendingInput;
       setPendingInput(null); // Clear pending input
       handleSubmit(input); // Re-run submit with the new chatId
     }
-  }, [chatId, pendingInput]);
+  }, [currentChatId, pendingInput]);
 
 
   const handleSubmit = async (input: string) => {
     setIsLoading(true);
-    
+
+    const userMessage: Message = { id: nanoid(), role: 'user', content: input };
+
     // If this is a new chat, we first need to create the chat session document.
-    if (!chatId) {
+    if (!currentChatId) {
       if (firestore && userId) {
-        setMessages([]); // Clear initial "hello" message
+        setMessages([userMessage]); // Clear initial "hello" message and show the user's message
         setPendingInput(input); // Save the user's input
         const newChatId = await createChatSession(firestore, userId);
         if (newChatId) {
-            onChatIdChange(newChatId); // This will trigger the useEffect above
+            onChatIdChange(newChatId); // This will trigger the useEffect above to re-run handleSubmit
         } else {
             console.error("Failed to create chat session");
-            // Optionally, show a toast to the user
-            setMessages([initialMessage]); // Restore initial message on failure
+            setMessages([initialMessage, { id: nanoid(), role: 'assistant', content: <p className="text-destructive">Error starting new chat session.</p> }]);
             setIsLoading(false);
         }
       }
       return; // Stop execution here; the useEffect will re-trigger handleSubmit
     }
-
-    const userMessageContent = input;
-    const userMessage: Message = { id: nanoid(), role: 'user', content: userMessageContent };
     
     setMessages(prev => [...prev, userMessage]);
 
     if(firestore && userId){
-      addMessage(firestore, userId, chatId, { role: 'user', content: input });
+      addMessage(firestore, userId, currentChatId, { role: 'user', content: input });
     }
     
     const result = await getAiResponse(input);
@@ -135,7 +133,7 @@ export default function ChatWrapper({ userId, chatId, onChatIdChange, onNewChat 
     }
 
     if(firestore && userId) {
-      addMessage(firestore, userId, chatId, assistantMessageForDb);
+      addMessage(firestore, userId, currentChatId, assistantMessageForDb);
     }
 
     setMessages(prev => [...prev, assistantMessage]);
@@ -144,10 +142,10 @@ export default function ChatWrapper({ userId, chatId, onChatIdChange, onNewChat 
 
   return (
     <div className="w-full max-w-4xl flex-1 flex h-[calc(100vh-180px)]">
-      <ChatHistory userId={userId} onSelectChat={onChatIdChange} onNewChat={onNewChat} selectedChatId={chatId} />
+      <ChatHistory userId={userId} onSelectChat={onChatIdChange} onNewChat={onNewChat} selectedChatId={currentChatId} />
       <div className="flex-1 flex flex-col bg-card rounded-r-xl shadow-lg border">
         <div ref={chatContainerRef} className="flex-1 p-6 overflow-y-auto">
-          {messagesLoading && !chatId ? (
+          {messagesLoading && !currentChatId ? (
             <div className="flex items-center justify-center h-full">
               <LoaderCircle className="h-8 w-8 animate-spin text-primary" />
             </div>
