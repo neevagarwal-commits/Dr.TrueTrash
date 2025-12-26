@@ -6,10 +6,10 @@ import type { Auth } from 'firebase/auth';
 import type { Firestore } from 'firebase/firestore';
 
 type FirebaseContextValue = {
-  app: FirebaseApp;
-  auth: Auth;
-  firestore: Firestore;
-} | null;
+  app: FirebaseApp | null;
+  auth: Auth | null;
+  firestore: Firestore | null;
+} | undefined;
 
 const FirebaseContext = createContext<FirebaseContextValue | undefined>(undefined);
 
