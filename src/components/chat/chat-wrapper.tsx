@@ -35,6 +35,7 @@ interface ChatWrapperProps {
 export default function ChatWrapper({ userId, chatId, onChatIdChange, onNewChat }: ChatWrapperProps) {
   const [messages, setMessages] = useState<Message[]>([initialMessage]);
   const [isLoading, setIsLoading] = useState(false);
+  const [pendingInput, setPendingInput] = useState<string | null>(null);
   const chatContainerRef = useRef<HTMLDivElement>(null);
   const firestore = useFirestore();
 
@@ -64,41 +65,45 @@ export default function ChatWrapper({ userId, chatId, onChatIdChange, onNewChat 
       chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
     }
   }, [messages]);
+  
+  useEffect(() => {
+    // This effect runs when a new chatId is set and there's a pending message to be sent.
+    if (chatId && pendingInput) {
+      const input = pendingInput;
+      setPendingInput(null); // Clear pending input
+      handleSubmit(input); // Re-run submit with the new chatId
+    }
+  }, [chatId, pendingInput]);
+
 
   const handleSubmit = async (input: string) => {
     setIsLoading(true);
-    let currentChatId = chatId;
-
-    // Create a new chat session if it's the first message of a new chat
-    if (!currentChatId && firestore && userId) {
+    
+    // If this is a new chat, we first need to create the chat session document.
+    if (!chatId) {
+      if (firestore && userId) {
+        setMessages([]); // Clear initial "hello" message
+        setPendingInput(input); // Save the user's input
         const newChatId = await createChatSession(firestore, userId);
         if (newChatId) {
-            onChatIdChange(newChatId);
-            currentChatId = newChatId;
-            setMessages([]); // Clear initial message to start fresh
+            onChatIdChange(newChatId); // This will trigger the useEffect above
         } else {
             console.error("Failed to create chat session");
-            setIsLoading(false);
             // Optionally, show a toast to the user
-            return;
+            setMessages([initialMessage]); // Restore initial message on failure
+            setIsLoading(false);
         }
-    }
-
-    // After attempting to create a session, check again.
-    if (!currentChatId) {
-        console.error("No chat ID available to send message");
-        setIsLoading(false);
-        return;
+      }
+      return; // Stop execution here; the useEffect will re-trigger handleSubmit
     }
 
     const userMessageContent = input;
     const userMessage: Message = { id: nanoid(), role: 'user', content: userMessageContent };
     
-    // Use a callback with setMessages to ensure we're updating from the latest state
     setMessages(prev => [...prev, userMessage]);
 
     if(firestore && userId){
-      addMessage(firestore, userId, currentChatId, { role: 'user', content: input });
+      addMessage(firestore, userId, chatId, { role: 'user', content: input });
     }
     
     const result = await getAiResponse(input);
@@ -130,7 +135,7 @@ export default function ChatWrapper({ userId, chatId, onChatIdChange, onNewChat 
     }
 
     if(firestore && userId) {
-      addMessage(firestore, userId, currentChatId, assistantMessageForDb);
+      addMessage(firestore, userId, chatId, assistantMessageForDb);
     }
 
     setMessages(prev => [...prev, assistantMessage]);
