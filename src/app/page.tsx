@@ -4,7 +4,6 @@ import { useState, useEffect, useCallback } from 'react';
 import ChatWrapper from '@/components/chat/chat-wrapper';
 import Header from '@/components/layout/header';
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
-import { FirebaseClientProvider } from '@/firebase';
 import { adjectives, nouns } from '@/lib/words';
 
 function generateMemorableId() {
@@ -55,25 +54,23 @@ export default function Home() {
   }
 
   return (
-    <FirebaseClientProvider>
-      <div className="flex flex-col min-h-screen bg-secondary/50 dark:bg-background">
-        <Header userId={userId} />
-        <main className="flex-1 flex flex-col items-center py-8 px-4">
-          <ChatWrapper
-            key={chatId || 'new'}
-            userId={userId}
-            chatId={chatId}
-            onChatIdChange={handleChatIdChange}
-            onNewChat={handleNewChat}
-          />
-        </main>
-        <footer className="py-4 text-center text-sm text-muted-foreground">
-          <p>
-            &copy; {new Date().getFullYear()} DR.TRUETRASH. All rights
-            reserved.
-          </p>
-        </footer>
-      </div>
-    </FirebaseClientProvider>
+    <div className="flex flex-col min-h-screen bg-secondary/50 dark:bg-background">
+      <Header userId={userId} />
+      <main className="flex-1 flex flex-col items-center py-8 px-4">
+        <ChatWrapper
+          key={chatId || 'new'}
+          userId={userId}
+          chatId={chatId}
+          onChatIdChange={handleChatIdChange}
+          onNewChat={handleNewChat}
+        />
+      </main>
+      <footer className="py-4 text-center text-sm text-muted-foreground">
+        <p>
+          &copy; {new Date().getFullYear()} DR.TRUETRASH. All rights
+          reserved.
+        </p>
+      </footer>
+    </div>
   );
 }
