@@ -68,21 +68,23 @@ export default function ChatWrapper({ userId, chatId, onChatIdChange, onNewChat 
   const handleSubmit = async (input: string) => {
     setIsLoading(true);
     let currentChatId = chatId;
-    
+
     // Create a new chat session if it's the first message of a new chat
     if (!currentChatId && firestore && userId) {
-      const newChatId = await createChatSession(firestore, userId);
-      if (newChatId) {
-        onChatIdChange(newChatId);
-        currentChatId = newChatId;
-        setMessages([]); // Clear initial message to start fresh
-      } else {
-        console.error("Failed to create chat session");
-        setIsLoading(false);
-        return;
-      }
+        const newChatId = await createChatSession(firestore, userId);
+        if (newChatId) {
+            onChatIdChange(newChatId);
+            currentChatId = newChatId;
+            setMessages([]); // Clear initial message to start fresh
+        } else {
+            console.error("Failed to create chat session");
+            setIsLoading(false);
+            // Optionally, show a toast to the user
+            return;
+        }
     }
 
+    // After attempting to create a session, check again.
     if (!currentChatId) {
         console.error("No chat ID available to send message");
         setIsLoading(false);
@@ -92,7 +94,9 @@ export default function ChatWrapper({ userId, chatId, onChatIdChange, onNewChat 
     const userMessageContent = input;
     const userMessage: Message = { id: nanoid(), role: 'user', content: userMessageContent };
     
+    // Use a callback with setMessages to ensure we're updating from the latest state
     setMessages(prev => [...prev, userMessage]);
+
     if(firestore && userId){
       addMessage(firestore, userId, currentChatId, { role: 'user', content: input });
     }
