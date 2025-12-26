@@ -22,26 +22,21 @@ export default function Home() {
   const searchParams = useSearchParams();
 
   useEffect(() => {
-    const idFromStorage = localStorage.getItem('userId');
-    const idFromUrl = searchParams.get('userId');
-
-    if (idFromUrl) {
-      if (idFromUrl !== idFromStorage) {
-        localStorage.setItem('userId', idFromUrl);
-      }
-      setUserId(idFromUrl);
-    } else if (idFromStorage) {
-      // If there's an ID in storage but not in URL, update URL
-      router.replace(`${pathname}?userId=${idFromStorage}`, { scroll: false });
-      setUserId(idFromStorage);
-    } else {
-      // If no ID anywhere, create a new one
-      const newId = generateMemorableId();
-      localStorage.setItem('userId', newId);
-      router.replace(`${pathname}?userId=${newId}`, { scroll: false });
-      setUserId(newId);
+    // This effect runs only once on the client to establish the user ID.
+    let id = localStorage.getItem('userId');
+    if (!id) {
+      id = generateMemorableId();
+      localStorage.setItem('userId', id);
     }
-  }, [searchParams, pathname, router]);
+    setUserId(id);
+  }, []);
+
+  useEffect(() => {
+    // This effect synchronizes the URL with the established userId.
+    if (userId && searchParams.get('userId') !== userId) {
+      router.replace(`${pathname}?userId=${userId}`, { scroll: false });
+    }
+  }, [userId, searchParams, pathname, router]);
 
   const handleChatIdChange = useCallback((id: string | null) => {
     setChatId(id);
