@@ -19,9 +19,12 @@ interface ChatHistoryProps {
 export default function ChatHistory({ userId, onSelectChat, onNewChat, selectedChatId }: ChatHistoryProps) {
   const firestore = useFirestore();
 
-  const chatsQuery = firestore
-    ? query(collection(firestore, 'users', userId, 'chats'), orderBy('createdAt', 'desc'))
-    : null;
+  // If firestore is not available, don't attempt to query or render the component.
+  if (!firestore) {
+    return null;
+  }
+
+  const chatsQuery = query(collection(firestore, 'users', userId, 'chats'), orderBy('createdAt', 'desc'));
     
   const { data: chats, loading } = useCollection<ChatSession>(chatsQuery);
 
