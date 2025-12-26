@@ -68,46 +68,48 @@ export default function ChatWrapper({ userId, chatId: currentChatId, onChatIdCha
 
   const handleSubmit = async (input: string) => {
     setIsLoading(true);
-
+    
+    // Add user message to UI immediately for responsiveness
     const userMessage: Message = { id: nanoid(), role: 'user', content: input };
     setMessages(prev => [...prev, userMessage]);
 
     let chatId = currentChatId;
 
     // 1. If it's a new chat, create the session first.
-    if (!chatId && firestore && userId) {
-      const newChatId = await createChatSession(firestore, userId);
-      if (newChatId) {
-        chatId = newChatId;
-        onChatIdChange(newChatId); // Update parent state
-      } else {
-        console.error("Failed to create chat session.");
-        const errorMessage: Message = {
-            id: nanoid(),
-            role: 'assistant',
-            content: <p className="text-destructive">Error starting a new chat. Please try again.</p>
-        };
-        setMessages(prev => [...prev, errorMessage]);
-        setIsLoading(false);
-        return;
-      }
+    if (!chatId) {
+        if (!firestore || !userId) {
+             const errorMessage: Message = {
+                id: nanoid(),
+                role: 'assistant',
+                content: <p className="text-destructive">Error: Cannot create a new chat. Firebase is not configured.</p>
+            };
+            setMessages(prev => [...prev, errorMessage]);
+            setIsLoading(false);
+            return;
+        }
+        const newChatId = await createChatSession(firestore, userId);
+        if (newChatId) {
+            chatId = newChatId;
+            onChatIdChange(newChatId); // Update parent state
+        } else {
+            console.error("Failed to create chat session.");
+            const errorMessage: Message = {
+                id: nanoid(),
+                role: 'assistant',
+                content: <p className="text-destructive">Error starting a new chat. Please try again.</p>
+            };
+            setMessages(prev => [...prev, errorMessage]);
+            setIsLoading(false);
+            return;
+        }
     }
     
-    // 2. Ensure we have a chatId before proceeding.
-    if (!chatId || !firestore || !userId) {
-        console.error("Chat ID, Firestore, or User ID is missing.");
-        const errorMessage: Message = {
-            id: nanoid(),
-            role: 'assistant',
-            content: <p className="text-destructive">Could not send message due to a configuration error.</p>
-        };
-        setMessages(prev => [...prev, errorMessage]);
-        setIsLoading(false);
-        return;
+    // At this point, chatId is guaranteed to be a string for a new or existing chat.
+    
+    // 2. Add user message to DB and get AI response.
+    if (firestore && userId) {
+        addMessage(firestore, userId, chatId, { role: 'user', content: input });
     }
-
-    // 3. Add user message to DB and get AI response.
-    addMessage(firestore, userId, chatId, { role: 'user', content: input });
     
     const result = await getAiResponse(input);
 
@@ -137,8 +139,10 @@ export default function ChatWrapper({ userId, chatId: currentChatId, onChatIdCha
         assistantMessageForDb = { role: 'assistant', content: 'An unknown error occurred.' };
     }
     
-    // 4. Add AI response to DB and UI.
-    addMessage(firestore, userId, chatId, assistantMessageForDb);
+    // 3. Add AI response to DB and UI.
+    if (firestore && userId) {
+        addMessage(firestore, userId, chatId, assistantMessageForDb);
+    }
     setMessages(prev => [...prev, assistantMessage]);
     setIsLoading(false);
   };
