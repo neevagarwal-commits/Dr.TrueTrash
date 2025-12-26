@@ -13,6 +13,8 @@ import { useFirestore } from '@/firebase';
 import { useCollection } from '@/firebase/firestore/use-collection';
 import { addMessage, createChatSession } from '@/firebase/firestore/chat';
 import { collection, query, orderBy } from 'firebase/firestore';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+
 
 const initialMessage: Message = {
   id: 'initial',
@@ -68,34 +70,41 @@ export default function ChatWrapper({ userId, chatId: currentChatId, onChatIdCha
 
   const handleSubmit = async (input: string) => {
     setIsLoading(true);
-    
     const userMessage: Message = { id: nanoid(), role: 'user', content: input };
     setMessages(prev => [...prev, userMessage]);
-
+  
     let chatId = currentChatId;
-
+  
     // 1. If it's a new chat and firestore is available, create the session.
     if (!chatId && firestore && userId) {
-        const newChatId = await createChatSession(firestore, userId);
-        if (newChatId) {
-            chatId = newChatId;
-            onChatIdChange(newChatId); // Update parent state
-        } else {
-            console.error("Failed to create chat session.");
-            // Don't block chat if session creation fails
-        }
+      const newChatId = await createChatSession(firestore, userId);
+      if (newChatId) {
+        chatId = newChatId;
+        onChatIdChange(newChatId); // Update parent state
+      }
     }
-    
-    // 2. Add user message to DB if possible
-    if (firestore && userId && chatId) {
-        addMessage(firestore, userId, chatId, { role: 'user', content: input });
+  
+    // 2. Ensure we have a chatId before proceeding.
+    if (!chatId || !firestore || !userId) {
+        const errorMessage: Message = {
+            id: nanoid(),
+            role: 'assistant',
+            content: <p className="text-destructive">Error: Cannot create a new chat. Firebase is not configured.</p>,
+        };
+        setMessages(prev => [...prev, errorMessage]);
+        setIsLoading(false);
+        return;
     }
+  
+    // 3. Add user message to DB
+    addMessage(firestore, userId, chatId, { role: 'user', content: input });
     
+    // 4. Get AI response
     const result = await getAiResponse(input);
-
+  
     let assistantMessage: Message;
     let assistantMessageForDb: Partial<ChatMessage>;
-
+  
     if (result.error) {
        assistantMessage = {
         id: nanoid(),
@@ -119,13 +128,12 @@ export default function ChatWrapper({ userId, chatId: currentChatId, onChatIdCha
         assistantMessageForDb = { role: 'assistant', content: 'An unknown error occurred.' };
     }
     
-    // 3. Add AI response to DB if possible and to UI.
-    if (firestore && userId && chatId) {
-        addMessage(firestore, userId, chatId, assistantMessageForDb);
-    }
+    // 5. Add AI response to DB and UI.
+    addMessage(firestore, userId, chatId, assistantMessageForDb);
     setMessages(prev => [...prev, assistantMessage]);
     setIsLoading(false);
   };
+  
 
   return (
     <div className="w-full max-w-4xl flex-1 flex h-[calc(100vh-180px)]">
