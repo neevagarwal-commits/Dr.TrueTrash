@@ -24,7 +24,7 @@ export default function ChatMessages({ messages }: ChatMessagesProps) {
             </Avatar>
           )}
           <div
-            className={`p-4 rounded-lg max-w-[80%] ${
+            className={`p-4 rounded-lg max-w-[80%] break-words ${
               message.role === 'user'
                 ? 'bg-primary text-primary-foreground'
                 : 'bg-muted'

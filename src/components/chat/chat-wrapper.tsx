@@ -35,7 +35,6 @@ interface ChatWrapperProps {
 export default function ChatWrapper({ userId, chatId: currentChatId, onChatIdChange, onNewChat }: ChatWrapperProps) {
   const [messages, setMessages] = useState<Message[]>([initialMessage]);
   const [isLoading, setIsLoading] = useState(false);
-  const [pendingInput, setPendingInput] = useState<string | null>(null);
   const chatContainerRef = useRef<HTMLDivElement>(null);
   const firestore = useFirestore();
 
@@ -49,7 +48,7 @@ export default function ChatWrapper({ userId, chatId: currentChatId, onChatIdCha
   useEffect(() => {
     if (chatMessages && chatMessages.length > 0) {
       const loadedMessages: Message[] = chatMessages.map(msg => ({
-        id: msg.id,
+        id: msg.id || nanoid(),
         role: msg.role,
         content: msg.predictions ? <PredictionsDisplay predictions={msg.predictions} /> : msg.content,
       }));
@@ -64,45 +63,51 @@ export default function ChatWrapper({ userId, chatId: currentChatId, onChatIdCha
     if (chatContainerRef.current) {
       chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
     }
-  }, [messages]);
-  
-  useEffect(() => {
-    // This effect runs when a new chatId is set and there's a pending message to be sent.
-    if (currentChatId && pendingInput) {
-      const input = pendingInput;
-      setPendingInput(null); // Clear pending input
-      handleSubmit(input); // Re-run submit with the new chatId
-    }
-  }, [currentChatId, pendingInput]);
+  }, [messages, isLoading]);
 
 
   const handleSubmit = async (input: string) => {
     setIsLoading(true);
 
     const userMessage: Message = { id: nanoid(), role: 'user', content: input };
-
-    // If this is a new chat, we first need to create the chat session document.
-    if (!currentChatId) {
-      if (firestore && userId) {
-        setMessages([userMessage]); // Clear initial "hello" message and show the user's message
-        setPendingInput(input); // Save the user's input
-        const newChatId = await createChatSession(firestore, userId);
-        if (newChatId) {
-            onChatIdChange(newChatId); // This will trigger the useEffect above to re-run handleSubmit
-        } else {
-            console.error("Failed to create chat session");
-            setMessages([initialMessage, { id: nanoid(), role: 'assistant', content: <p className="text-destructive">Error starting new chat session.</p> }]);
-            setIsLoading(false);
-        }
-      }
-      return; // Stop execution here; the useEffect will re-trigger handleSubmit
-    }
-    
     setMessages(prev => [...prev, userMessage]);
 
-    if(firestore && userId){
-      addMessage(firestore, userId, currentChatId, { role: 'user', content: input });
+    let chatId = currentChatId;
+
+    // 1. If it's a new chat, create the session first.
+    if (!chatId && firestore && userId) {
+      const newChatId = await createChatSession(firestore, userId);
+      if (newChatId) {
+        chatId = newChatId;
+        onChatIdChange(newChatId); // Update parent state
+      } else {
+        console.error("Failed to create chat session.");
+        const errorMessage: Message = {
+            id: nanoid(),
+            role: 'assistant',
+            content: <p className="text-destructive">Error starting a new chat. Please try again.</p>
+        };
+        setMessages(prev => [...prev, errorMessage]);
+        setIsLoading(false);
+        return;
+      }
     }
+    
+    // 2. Ensure we have a chatId before proceeding.
+    if (!chatId || !firestore || !userId) {
+        console.error("Chat ID, Firestore, or User ID is missing.");
+        const errorMessage: Message = {
+            id: nanoid(),
+            role: 'assistant',
+            content: <p className="text-destructive">Could not send message due to a configuration error.</p>
+        };
+        setMessages(prev => [...prev, errorMessage]);
+        setIsLoading(false);
+        return;
+    }
+
+    // 3. Add user message to DB and get AI response.
+    addMessage(firestore, userId, chatId, { role: 'user', content: input });
     
     const result = await getAiResponse(input);
 
@@ -131,11 +136,9 @@ export default function ChatWrapper({ userId, chatId: currentChatId, onChatIdCha
         };
         assistantMessageForDb = { role: 'assistant', content: 'An unknown error occurred.' };
     }
-
-    if(firestore && userId) {
-      addMessage(firestore, userId, currentChatId, assistantMessageForDb);
-    }
-
+    
+    // 4. Add AI response to DB and UI.
+    addMessage(firestore, userId, chatId, assistantMessageForDb);
     setMessages(prev => [...prev, assistantMessage]);
     setIsLoading(false);
   };
@@ -145,7 +148,7 @@ export default function ChatWrapper({ userId, chatId: currentChatId, onChatIdCha
       <ChatHistory userId={userId} onSelectChat={onChatIdChange} onNewChat={onNewChat} selectedChatId={currentChatId} />
       <div className="flex-1 flex flex-col bg-card rounded-r-xl shadow-lg border">
         <div ref={chatContainerRef} className="flex-1 p-6 overflow-y-auto">
-          {messagesLoading && !currentChatId ? (
+          {messagesLoading && !chatMessages ? (
             <div className="flex items-center justify-center h-full">
               <LoaderCircle className="h-8 w-8 animate-spin text-primary" />
             </div>
@@ -155,8 +158,12 @@ export default function ChatWrapper({ userId, chatId: currentChatId, onChatIdCha
 
           {isLoading && (
               <div className="flex items-start gap-4 mt-4">
-                  <div className="flex-shrink-0 size-8 bg-primary text-primary-foreground rounded-full flex items-center justify-center">
-                      <LoaderCircle className="animate-spin h-5 w-5" />
+                  <div className="flex-shrink-0 size-8 rounded-full flex items-center justify-center">
+                    <Avatar className="h-8 w-8 flex-shrink-0">
+                      <AvatarFallback className="bg-primary text-primary-foreground">
+                        <LoaderCircle className="animate-spin h-5 w-5" />
+                      </AvatarFallback>
+                    </Avatar>
                   </div>
                   <div className="p-4 rounded-lg bg-muted max-w-[80%]">
                       <p className="text-muted-foreground">Analyzing symptoms...</p>
