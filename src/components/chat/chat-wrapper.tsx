@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import type { Message, ChatMessage } from '@/lib/types';
 import ChatMessages from './chat-messages';
 import ChatInput from './chat-input';
@@ -73,10 +73,7 @@ export default function ChatWrapper({ userId, chatId: currentChatId, onChatIdCha
     const userMessage: Message = { id: nanoid(), role: 'user', content: input };
     setMessages(prev => [...prev, userMessage]);
 
-    // If firestore isn't configured, we can't save history.
-    // Show an error and stop, but keep the AI flow going for a stateless experience.
     if (!firestore) {
-      console.warn("Firestore is not configured. Chat history will not be saved.");
       const result = await getAiResponse(input);
       let assistantMessage: Message;
 
@@ -93,17 +90,13 @@ export default function ChatWrapper({ userId, chatId: currentChatId, onChatIdCha
       return;
     }
 
-
-    // --- Firestore is available, proceed with saving history ---
-    
     let chatId = currentChatId;
 
-    // 1. If it's a new chat, create the session first.
     if (!chatId) {
       const newChatId = await createChatSession(firestore, userId);
       if (newChatId) {
         chatId = newChatId;
-        onChatIdChange(newChatId); // Update parent state
+        onChatIdChange(newChatId);
       } else {
         const errorMessage: Message = {
           id: nanoid(),
@@ -116,10 +109,8 @@ export default function ChatWrapper({ userId, chatId: currentChatId, onChatIdCha
       }
     }
 
-    // 2. Add user message to DB
     addMessage(firestore, userId, chatId, { role: 'user', content: input });
     
-    // 3. Get AI response
     const result = await getAiResponse(input);
   
     let assistantMessage: Message;
@@ -148,7 +139,6 @@ export default function ChatWrapper({ userId, chatId: currentChatId, onChatIdCha
         assistantMessageForDb = { role: 'assistant', content: 'An unknown error occurred.' };
     }
     
-    // 4. Add AI response to DB and UI.
     addMessage(firestore, userId, chatId, assistantMessageForDb);
     setMessages(prev => [...prev, assistantMessage]);
     setIsLoading(false);
@@ -156,20 +146,29 @@ export default function ChatWrapper({ userId, chatId: currentChatId, onChatIdCha
   
 
   return (
-    <div className="w-full max-w-4xl flex-1 flex h-[calc(100vh-180px)]">
-      {firestore && <ChatHistory userId={userId} onSelectChat={onChatIdChange} onNewChat={onNewChat} selectedChatId={currentChatId} />}
-      <div className={`flex-1 flex flex-col bg-card shadow-lg border ${firestore ? 'rounded-r-xl' : 'rounded-xl'}`}>
+    <div className="w-full flex-1 flex overflow-hidden">
+      {firestore && (
+        <ChatHistory 
+          userId={userId} 
+          onSelectChat={onChatIdChange} 
+          onNewChat={onNewChat} 
+          selectedChatId={currentChatId} 
+        />
+      )}
+      <div className="flex-1 flex flex-col bg-card border-l">
         <div ref={chatContainerRef} className="flex-1 p-6 overflow-y-auto">
           {messagesLoading && !chatMessages ? (
             <div className="flex items-center justify-center h-full">
               <LoaderCircle className="h-8 w-8 animate-spin text-primary" />
             </div>
           ) : (
-            <ChatMessages messages={messages} />
+            <div className="max-w-4xl mx-auto w-full">
+              <ChatMessages messages={messages} />
+            </div>
           )}
 
           {isLoading && (
-              <div className="flex items-start gap-4 mt-4">
+              <div className="max-w-4xl mx-auto w-full flex items-start gap-4 mt-4">
                   <div className="flex-shrink-0 size-8 rounded-full flex items-center justify-center">
                     <Avatar className="h-8 w-8 flex-shrink-0">
                       <AvatarFallback className="bg-primary text-primary-foreground">
@@ -183,8 +182,10 @@ export default function ChatWrapper({ userId, chatId: currentChatId, onChatIdCha
               </div>
           )}
         </div>
-        <div className="p-4 border-t">
-          <ChatInput onSubmit={handleSubmit} isLoading={isLoading} />
+        <div className="p-4 border-t bg-background">
+          <div className="max-w-4xl mx-auto w-full">
+            <ChatInput onSubmit={handleSubmit} isLoading={isLoading} />
+          </div>
         </div>
       </div>
     </div>

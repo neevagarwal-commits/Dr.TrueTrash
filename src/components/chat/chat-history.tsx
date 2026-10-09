@@ -19,7 +19,6 @@ interface ChatHistoryProps {
 export default function ChatHistory({ userId, onSelectChat, onNewChat, selectedChatId }: ChatHistoryProps) {
   const firestore = useFirestore();
 
-  // If firestore is not available, don't attempt to query or render the component.
   if (!firestore) {
     return null;
   }
@@ -33,34 +32,41 @@ export default function ChatHistory({ userId, onSelectChat, onNewChat, selectedC
   }
 
   return (
-    <div className="w-64 flex flex-col bg-card rounded-l-xl shadow-lg border p-4">
-      <Button onClick={handleNewChatClick} className="w-full mb-4">
+    <div className="w-72 flex flex-col bg-muted/30 border-r p-4 hidden md:flex">
+      <Button onClick={handleNewChatClick} className="w-full mb-6" variant="default">
         <PlusCircle className="mr-2 h-4 w-4" />
-        New Chat
+        New Consultation
       </Button>
-      <h2 className="text-lg font-headline mb-2 px-2">History</h2>
-      <div className="flex-1 overflow-y-auto space-y-2">
+      <div className="flex items-center justify-between mb-4 px-2">
+        <h2 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Recent History</h2>
+      </div>
+      <div className="flex-1 overflow-y-auto space-y-1">
         {loading && (
-            <>
+            <div className="space-y-2">
                 <Skeleton className="h-10 w-full" />
                 <Skeleton className="h-10 w-full" />
                 <Skeleton className="h-10 w-full" />
-            </>
+            </div>
         )}
         {chats && chats.map(chat => (
           <Button 
             key={chat.id} 
             variant="ghost" 
             className={cn(
-                "w-full justify-start gap-2",
-                selectedChatId === chat.id && "bg-accent"
+                "w-full justify-start gap-3 h-11 px-3 font-normal",
+                selectedChatId === chat.id ? "bg-accent text-accent-foreground" : "hover:bg-accent/50"
             )}
             onClick={() => onSelectChat(chat.id)}
             >
-            <MessageSquare className="h-4 w-4" />
-            <span className="truncate">{chat.title}</span>
+            <MessageSquare className={cn("h-4 w-4", selectedChatId === chat.id ? "text-primary" : "text-muted-foreground")} />
+            <span className="truncate flex-1 text-left">{chat.title}</span>
           </Button>
         ))}
+        {!loading && (!chats || chats.length === 0) && (
+          <div className="text-center py-8">
+            <p className="text-xs text-muted-foreground">No previous chats</p>
+          </div>
+        )}
       </div>
     </div>
   );

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback } from 'react';
 import ChatWrapper from '@/components/chat/chat-wrapper';
 import Header from '@/components/layout/header';
 import { SidebarProvider } from '@/components/ui/sidebar';
@@ -20,9 +20,9 @@ export default function Home() {
 
   return (
     <SidebarProvider>
-      <div className="flex flex-col min-h-screen bg-secondary/50 dark:bg-background">
+      <div className="flex flex-col h-screen bg-background overflow-hidden">
         <Header />
-        <main className="flex-1 flex flex-col items-center py-8 px-4">
+        <main className="flex-1 flex flex-col overflow-hidden">
           <ChatWrapper
             key={chatId || 'new'}
             userId={GUEST_USER_ID}
@@ -31,12 +31,6 @@ export default function Home() {
             onNewChat={handleNewChat}
           />
         </main>
-        <footer className="py-4 text-center text-sm text-muted-foreground">
-          <p>
-            &copy; {new Date().getFullYear()} DR.TRUETRASH. All rights
-            reserved.
-          </p>
-        </footer>
       </div>
     </SidebarProvider>
   );
