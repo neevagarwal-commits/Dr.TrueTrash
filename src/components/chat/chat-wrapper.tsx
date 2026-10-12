@@ -162,13 +162,13 @@ export default function ChatWrapper({ userId, chatId: currentChatId, onChatIdCha
               <LoaderCircle className="h-8 w-8 animate-spin text-primary" />
             </div>
           ) : (
-            <div className="max-w-4xl mx-auto w-full">
+          <div className="w-full">
               <ChatMessages messages={messages} />
             </div>
           )}
 
           {isLoading && (
-              <div className="max-w-4xl mx-auto w-full flex items-start gap-4 mt-4">
+              <div className="w-full flex items-start gap-4 mt-4">
                   <div className="flex-shrink-0 size-8 rounded-full flex items-center justify-center">
                     <Avatar className="h-8 w-8 flex-shrink-0">
                       <AvatarFallback className="bg-primary text-primary-foreground">
@@ -183,9 +183,9 @@ export default function ChatWrapper({ userId, chatId: currentChatId, onChatIdCha
           )}
         </div>
         <div className="p-4 border-t bg-background">
-          <div className="max-w-4xl mx-auto w-full">
-            <ChatInput onSubmit={handleSubmit} isLoading={isLoading} />
-          </div>
+          <div className="w-full">
+              <ChatInput onSubmit={handleSubmit} isLoading={isLoading} />
+            </div>
         </div>
       </div>
     </div>
